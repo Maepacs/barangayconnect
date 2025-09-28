@@ -1,3 +1,18 @@
+<?php
+session_start();
+
+// Prevent caching
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Protect dashboard
+if (!isset($_SESSION["admin_id"])) {
+    header("Location: ../login.php"); // ← go up one folder
+    exit;
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,58 +36,65 @@ body {
   color: #fff;
 }
 
-/* Sidebar */
-.sidebar {
+   /* Sidebar */
+   .sidebar {
   width: 250px;
   background: #343A40;
   color: #fff;
   padding: 20px;
-  position: fixed;
+  position: fixed;   /* ✅ keep sidebar fixed on screen */
   top: 0;
   bottom: 0;
   left: 0;
   box-shadow: 2px 0 10px rgba(245, 245, 245, 0.94);
-}
+    }
 
-.sidebar h2 {
+
+   sidebar.h2 {
   text-align: center;
-  font-size: 22px;
+  font-size: 24px;
+  color: #ffffff;
   margin-bottom: 15px;
 }
 
 .sidebar img {
   display: block;
   margin: 0 auto 20px;
-  max-width: 120px;
+  width: 100px;      /* adjust width */
+  height: 100px;     /* same as width for a circle */
   border-radius: 50%;
   border: 2px solid rgb(225, 234, 39);
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   padding: 5px;
+  object-fit: cover; /* ✅ keeps image from stretching */
 }
 
-.sidebar ul {
-  list-style: none;
-}
 
-.sidebar ul li {
-  margin: 15px 0;
-}
 
-.sidebar ul li a {
-  color: #ddd;
-  text-decoration: none;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  padding: 10px;
-  border-radius: 6px;
-  transition: 0.3s;
-}
+    .sidebar ul {
+      list-style: none;
+    }
 
-.sidebar ul li a i {
-  margin-right: 10px;
-}
+    .sidebar ul li {
+      margin: 10px 0;
+    }
 
+    .sidebar ul li a {
+      color: #ddd;
+      text-decoration: none;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-radius: 6px;
+      transition: 0.3s;
+    }
+
+    .sidebar ul li a i {
+      margin-right: 10px;
+    }
+
+    /* Hover effect */
 .sidebar ul li a:hover,
 .sidebar ul li a.active {
   background: #4a90e2;
@@ -117,6 +139,29 @@ body {
 .header .user i {
   font-size: 20px;
 }
+
+/* Notification */
+.notification {
+      position: relative;
+      cursor: pointer;
+    }
+
+    .notification i {
+      font-size: 20px;
+      color:rgb(242, 245, 248);
+    }
+
+    .notification .badge {
+      position: absolute;
+      top: -5px;
+      right: -8px;
+      background:rgb(213, 93, 46);
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 50%;
+    }
 
 /* Form */
 .settings-form {
@@ -183,11 +228,11 @@ body {
       <li><a href="document_request.php"><i class="fa-solid fa-file-lines"></i> Document Requests</a></li>
       <li><a href="complaints.php"><i class="fa-solid fa-comments"></i> Complaints</a></li>
       <li><a href="residents.php"><i class="fa-solid fa-users"></i> Residents</a></li>
-      <li><a href="#"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
-      <li><a href="create_official.php"><i class="fas fa-user-plus"></i> Create Official Account</a></li>
+      <li><a href="officials.php"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
+      <li><a href="create_officials.php"><i class="fas fa-user-plus"></i> Create Official Account</a></li>
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
       <li><a href="activity_logs.php"> <i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
-      <li><a href="settings.php" class="active"><i class="fa-solid fa-gear"></i> Settings</a></li>
+      <li><a href="settings.php" class="active"> <i class="fa-solid fa-gear"></i> Settings</a></li>
       <li><a href="../logout.php" onclick="return confirm('Are you sure you want to log out?');">
         <i class="fa-solid fa-right-from-bracket"></i> Logout</a>
       </li>
@@ -196,19 +241,24 @@ body {
 
   <!-- Main Content -->
   <div class="main-content">
+    <!-- Header -->
     <div class="header">
-      <h1>Settings</h1>
+      <h1>Admin Dashboard</h1>
       <div class="right-section">
         <div class="notification">
           <i class="fa-solid fa-bell"></i>
-          <span class="badge" id="notifCount">0</span>
+          <span class="badge">#</span> <!-- Dynamic badge count -->
         </div>
         <div class="user">
           <i class="fa-solid fa-user-circle"></i>
-          <span>Admin</span>
+          <span>
+            <?php 
+              echo isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : "Guest"; 
+            ?>
+          </span>
         </div>
       </div>
-    </div>
+    </div> <!-- ✅ Closed header properly -->
 
     <!-- Settings Form -->
     <form class="settings-form">
@@ -233,4 +283,12 @@ body {
     </form>
   </div>
 </body>
+
+<script>
+if (performance.navigation.type === 2) {  
+    // Back/forward navigation
+    window.location.href = "../login.php"; // ← go up one folder
+}
+</script>
+
 </html>

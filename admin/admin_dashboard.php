@@ -1,3 +1,19 @@
+<?php
+session_start();
+
+// Prevent caching
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Protect dashboard
+if (!isset($_SESSION["admin_id"])) {
+    header("Location: ../login.php"); // ← go up one folder
+    exit;
+}
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,6 +24,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     * {
+
       box-sizing: border-box;
       margin: 0;
       padding: 0;
@@ -22,16 +39,17 @@
 
     /* Sidebar */
     .sidebar {
-      width: 250px;
-      background:#343A40;
-      color: #fff;
-      padding: 20px;
-      position: fixed;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      box-shadow: 2px 0 10px rgba(245, 245, 245, 0.94);
+  width: 250px;
+  background: #343A40;
+  color: #fff;
+  padding: 20px;
+  position: fixed;   /* ✅ keep sidebar fixed on screen */
+  top: 0;
+  bottom: 0;
+  left: 0;
+  box-shadow: 2px 0 10px rgba(245, 245, 245, 0.94);
     }
+
 
    sidebar.h2 {
   text-align: center;
@@ -40,16 +58,18 @@
   margin-bottom: 15px;
 }
 
-img {
-      display: block;
-      margin: 0 auto 20px;
-      max-width: 120px;
-      height: auto;
-      border-radius: 50%;
-      border: 2px solid rgb(225, 234, 39);
-      background: rgba(255,255,255,0.1);
-      padding: 5px;
-    }
+.sidebar img {
+  display: block;
+  margin: 0 auto 20px;
+  width: 100px;      /* adjust width */
+  height: 100px;     /* same as width for a circle */
+  border-radius: 50%;
+  border: 2px solid rgb(225, 234, 39);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 5px;
+  object-fit: cover; /* ✅ keeps image from stretching */
+}
+
 
 
     .sidebar ul {
@@ -57,7 +77,7 @@ img {
     }
 
     .sidebar ul li {
-      margin: 15px 0;
+      margin: 10px 0;
     }
 
     .sidebar ul li a {
@@ -75,10 +95,13 @@ img {
       margin-right: 10px;
     }
 
-    .sidebar ul li a:hover {
-      background: #4a90e2;
-      color: #fff;
-    }
+    /* Hover effect */
+.sidebar ul li a:hover,
+.sidebar ul li a.active {
+  background: #4a90e2;
+  color: #fff;
+}
+
 
     /* Main content */
     .main-content {
@@ -179,8 +202,8 @@ img {
 </head> 
 <body>
 
-  <!-- Sidebar -->
-  <div class="sidebar">
+   <!-- Sidebar -->
+   <div class="sidebar">
     <h2>Barangay Connect</h2><br>
     <img src="../assets/images/bg_logo.png">
     <ul>
@@ -189,15 +212,17 @@ img {
       <li><a href="complaints.php"><i class="fa-solid fa-comments"></i> Complaints</a></li>
       <li><a href="residents.php"><i class="fa-solid fa-users"></i> Residents</a></li>
       <li><a href="officials.php"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
-      <li><a href="create_official.php"><i class="fas fa-user-plus"></i> Create Official Account</a></li>
+      <li><a href="create_officials.php"><i class="fas fa-user-plus"></i> Create Official Account</a></li>
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
-      <li><a href="activity_logs.php" class="active"><i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
+      <li><a href="activity_logs.php"> <i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
       <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>
       <li><a href="../logout.php" onclick="return confirm('Are you sure you want to log out?');">
     <i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
 
     </ul>
   </div>
+
+
 
   <!-- Main Content -->
   <div class="main-content">
@@ -209,12 +234,16 @@ img {
           <i class="fa-solid fa-bell"></i>
           <span class="badge">#</span> <!-- Dynamic badge count -->
         </div>
-      <div class="user">
-        <i class="fa-solid fa-user-circle"></i>
-        <span>Admin</span>
+        <div class="user">
+          <i class="fa-solid fa-user-circle"></i>
+          <span>
+            <?php 
+              echo isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : "Guest"; 
+            ?>
+          </span>
+        </div>
       </div>
-    </div>
-  </div>
+    </div> <!-- ✅ Closed header properly -->
 
     <!-- Dashboard Cards -->
     <div class="cards">
@@ -238,4 +267,12 @@ img {
   </div>
 
 </body>
+<script>
+if (performance.navigation.type === 2) {  
+    // Back/forward navigation
+    window.location.href = "../login.php"; // ← go up one folder
+}
+</script>
+
+
 </html>

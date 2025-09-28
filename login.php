@@ -1,3 +1,44 @@
+<?php
+session_start();
+require_once "cons/config.php"; // <-- adjust path to your DB connection file
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username = trim($_POST["username"]);
+    $password = trim($_POST["password"]);
+
+    if (!empty($username) && !empty($password)) {
+        // Prepare statement to prevent SQL injection
+        $stmt = $conn->prepare("SELECT user_id, full_name, password_hash FROM users WHERE username = ?");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 1) {
+            $row = $result->fetch_assoc();
+
+            // Verify password (assuming hashed with password_hash)
+            if (password_verify($password, $row["password_hash"])) {
+                // Set session
+                $_SESSION["admin_id"] = $row["user_id"];
+                $_SESSION["full_name"] = $row["full_name"];
+
+                header("Location: admin/admin_dashboard.php");
+                exit;
+            } else {
+                $error = "Invalid username or password.";
+            }
+        } else {
+            $error = "Incorrect username or password.";
+        }
+
+        $stmt->close();
+    } else {
+        $error = "Please fill in all fields.";
+    }
+}
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -151,6 +192,18 @@ h1 span {
     .input-success {
       border-color: #2ecc71;
     }
+
+    .server-error {
+  margin-bottom: 15px;
+  padding: 10px;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid #e74c3c;
+  border-radius: 5px;
+  color: #e74c3c;
+  font-size: 14px;
+  text-align: center;
+}
+
   </style>
 </head>
 <body>
@@ -158,34 +211,39 @@ h1 span {
   <h1>Welcome to <br> <span>Barangay Connect</span></h1>
 <p class="subtitle">Please login your account</p>
 
-    <form id="loginForm" novalidate>
-      <div class="form-group">
-        <label for="username">Username</label>
-        <div class="input-container">
-          <i class="fa-solid fa-id-card"></i>
-          <input type="text" id="username" name="username" placeholder="Enter your username">
-        </div>
-        <div class="error-message" id="usernameError">Username is required</div>
-      </div>
+<form id="loginForm" action="login.php" method="POST" novalidate>
+  <?php if (!empty($error)): ?>
+    <div class="server-error"><?php echo htmlspecialchars($error); ?></div>
+  <?php endif; ?>
 
-      <div class="form-group">
-        <label for="password">Password</label>
-        <div class="password-container">
-          <i class="fa-solid fa-lock"></i>
-          <input type="password" id="password" name="password" placeholder="Enter your password">
-          <button type="button" class="toggle-password" id="togglePassword">
-            <i class="fa-solid fa-eye"></i>
-          </button>
-        </div>
-        <div class="error-message" id="passwordError">Password is required</div>
-      </div>
+  <div class="form-group">
+    <label for="username">Username</label>
+    <div class="input-container">
+      <i class="fa-solid fa-id-card"></i>
+      <input type="text" id="username" name="username" placeholder="Enter your username">
+    </div>
+    <div class="error-message" id="usernameError">Username is required</div>
+  </div>
 
-      <button type="submit">Login</button>
+  <div class="form-group">
+    <label for="password">Password</label>
+    <div class="password-container">
+      <i class="fa-solid fa-lock"></i>
+      <input type="password" id="password" name="password" placeholder="Enter your password">
+      <button type="button" class="toggle-password" id="togglePassword">
+        <i class="fa-solid fa-eye"></i>
+      </button>
+    </div>
+    <div class="error-message" id="passwordError">Password is required</div>
+  </div>
 
-      <div class="form-footer">
-        Don’t have an account? <a href="register.php">Register</a>
-      </div>
-    </form>
+  <button type="submit">Login</button>
+
+  <div class="form-footer">
+    Don’t have an account? <a href="register.php">Register</a>
+  </div>
+</form>
+
   </div>
 
   <script>
@@ -228,16 +286,13 @@ h1 span {
       passwordInput.addEventListener('blur', validatePassword);
 
       form.addEventListener('submit', e => {
-        e.preventDefault();
-        const valid = [validateUsername(), validatePassword()].every(Boolean);
-        if (valid) {
-          alert('Login successful!');
-          form.reset();
-          [usernameInput, passwordInput].forEach(i => i.classList.remove('input-success'));
-        } else {
-          alert('Please fill in all required fields.');
-        }
-      });
+  const valid = [validateUsername(), validatePassword()].every(Boolean);
+  if (!valid) {
+    e.preventDefault(); // block only if invalid
+    alert('Please fill in all required fields.');
+  }
+});
+
     });
   </script>
 </body>

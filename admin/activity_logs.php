@@ -1,3 +1,18 @@
+<?php
+session_start();
+
+// Prevent caching
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Protect dashboard
+if (!isset($_SESSION["admin_id"])) {
+    header("Location: ../login.php"); // ← go up one folder
+    exit;
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,37 +22,255 @@
 <link rel="icon" href="../assets/images/ghost.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
-* { box-sizing: border-box; margin:0; padding:0; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;}
-body { background:#FFF8E1; min-height:100vh; display:flex; color:#fff;}
-.sidebar { width:250px; background:#343A40; color:#fff; padding:20px; position:fixed; top:0; bottom:0; left:0; box-shadow:2px 0 10px rgba(245,245,245,0.94);}
-.sidebar h2{text-align:center; font-size:22px; margin-bottom:15px;}
-.sidebar img{display:block; margin:0 auto 20px; max-width:120px; border-radius:50%; border:2px solid rgb(225,234,39); background: rgba(255,255,255,0.1); padding:5px;}
-.sidebar ul{list-style:none;}
-.sidebar ul li{margin:15px 0;}
-.sidebar ul li a{color:#ddd; text-decoration:none; font-size:16px; display:flex; align-items:center; padding:10px; border-radius:6px; transition:0.3s;}
-.sidebar ul li a i{margin-right:10px;}
-.sidebar ul li a:hover, .sidebar ul li a.active{background:#4a90e2; color:#fff;}
-.main-content {margin-left:250px; flex:1; display:flex; flex-direction:column; background:rgba(0,0,0,0.55); padding:20px;}
-.header {display:flex; justify-content:space-between; align-items:center; padding-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.2);}
-.header h1{font-size:22px;}
-.header .right-section{display:flex; align-items:center; gap:20px;}
-.header .user{display:flex; align-items:center; gap:10px;}
-.header .user i{font-size:20px;}
-.search-filter {display:flex; justify-content:flex-end; gap:10px; margin:20px 0;}
-.search-filter input {padding:8px 12px; border-radius:6px 0 0 6px; border:none; outline:none; width:200px;}
-.search-filter select {padding:8px 12px; border-radius:0 6px 6px 0; border:none; outline:none; background:#4a90e2; color:#fff; cursor:pointer;}
-.table-container {background: rgba(255,255,255,0.08); padding:20px; border-radius:10px; overflow-x:auto; margin-bottom:20px;}
-table {width:100%; border-collapse:collapse;}
-th, td {padding:12px 15px; border-bottom:1px solid rgba(255,255,255,0.2); text-align:left; font-size:14px;}
-th {background:rgba(74,144,226,0.6); font-weight:bold;}
-tr:hover{background:rgba(255,255,255,0.1);}
-.action-btn {padding:6px 10px; margin:2px; border:none; border-radius:6px; cursor:pointer; font-size:12px;}
-.action-btn.view {background:#3498DB; color:#fff;}
-.action-btn.delete {background:#E74C3C; color:#fff;}
-.section-title{margin:15px 0; font-size:18px; color:#FFD54F;}
-.pagination {display:flex; justify-content:center; gap:10px; margin-top:10px;}
-.pagination button {padding:6px 12px; border:none; border-radius:6px; cursor:pointer; background:#4a90e2; color:#fff;}
-.pagination button.disabled {opacity:0.5; cursor:not-allowed;}
+/* Global Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background: #FFF8E1;
+  min-height: 100vh;
+  display: flex;
+  color: #fff;
+}
+
+ /* Sidebar */
+ .sidebar {
+  width: 250px;
+  background: #343A40;
+  color: #fff;
+  padding: 20px;
+  position: fixed;   /* ✅ keep sidebar fixed on screen */
+  top: 0;
+  bottom: 0;
+  left: 0;
+  box-shadow: 2px 0 10px rgba(245, 245, 245, 0.94);
+    }
+
+
+   sidebar.h2 {
+  text-align: center;
+  font-size: 24px;
+  color: #ffffff;
+  margin-bottom: 15px;
+}
+
+.sidebar img {
+  display: block;
+  margin: 0 auto 20px;
+  width: 100px;      /* adjust width */
+  height: 100px;     /* same as width for a circle */
+  border-radius: 50%;
+  border: 2px solid rgb(225, 234, 39);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 5px;
+  object-fit: cover; /* ✅ keeps image from stretching */
+}
+
+
+
+    .sidebar ul {
+      list-style: none;
+    }
+
+    .sidebar ul li {
+      margin: 10px 0;
+    }
+
+    .sidebar ul li a {
+      color: #ddd;
+      text-decoration: none;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-radius: 6px;
+      transition: 0.3s;
+    }
+
+    .sidebar ul li a i {
+      margin-right: 10px;
+    }
+
+    /* Hover effect */
+.sidebar ul li a:hover,
+.sidebar ul li a.active {
+  background: #4a90e2;
+  color: #fff;
+}
+
+
+/* Main Content */
+.main-content {
+  margin-left: 250px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 20px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.header h1 {
+  font-size: 22px;
+}
+
+.header .right-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header .user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header .user i {
+  font-size: 20px;
+}
+
+ /* Notification */
+ .notification {
+      position: relative;
+      cursor: pointer;
+    }
+
+    .notification i {
+      font-size: 20px;
+      color:rgb(242, 245, 248);
+    }
+
+    .notification .badge {
+      position: absolute;
+      top: -5px;
+      right: -8px;
+      background:rgb(213, 93, 46);
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 50%;
+    }
+
+/* Search + Filter */
+.search-filter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.search-filter input {
+  padding: 8px 12px;
+  border-radius: 6px 0 0 6px;
+  border: none;
+  outline: none;
+  width: 200px;
+}
+
+.search-filter select {
+  padding: 8px 12px;
+  border-radius: 0 6px 6px 0;
+  border: none;
+  outline: none;
+  background: #4a90e2;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* Table */
+.table-container {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 20px;
+  border-radius: 10px;
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 12px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: left;
+  font-size: 14px;
+}
+
+th {
+  background: rgba(74, 144, 226, 0.6);
+  font-weight: bold;
+}
+
+tr:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Buttons */
+.action-btn {
+  padding: 6px 10px;
+  margin: 2px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.action-btn.view {
+  background: #3498DB;
+  color: #fff;
+}
+
+.action-btn.delete {
+  background: #E74C3C;
+  color: #fff;
+}
+
+/* Section Title */
+.section-title {
+  margin: 15px 0;
+  font-size: 18px;
+  color: #FFD54F;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.pagination button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #4a90e2;
+  color: #fff;
+}
+
+.pagination button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 </style>
 </head>
 <body>
@@ -50,8 +283,8 @@ tr:hover{background:rgba(255,255,255,0.1);}
       <li><a href="document_request.php"><i class="fa-solid fa-file-lines"></i> Document Requests</a></li>
       <li><a href="complaints.php"><i class="fa-solid fa-comments"></i> Complaints</a></li>
       <li><a href="residents.php"><i class="fa-solid fa-users"></i> Residents</a></li>
-      <li><a href="#"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
-      <li><a href="create_official.php"><i class="fas fa-user-plus"></i> Create Official Account</a></li>
+      <li><a href="officials.php"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
+      <li><a href="create_officials.php"><i class="fas fa-user-plus"></i> Create Official Account</a></li>
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
       <li><a href="activity_logs.php" class="active"><i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
       <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>
@@ -63,19 +296,24 @@ tr:hover{background:rgba(255,255,255,0.1);}
 
   <!-- Main Content -->
   <div class="main-content">
+    <!-- Header -->
     <div class="header">
-      <h1>Activity Logs</h1>
+      <h1>Admin Dashboard</h1>
       <div class="right-section">
         <div class="notification">
           <i class="fa-solid fa-bell"></i>
-          <span class="badge" id="notifCount">0</span>
+          <span class="badge">#</span> <!-- Dynamic badge count -->
         </div>
         <div class="user">
           <i class="fa-solid fa-user-circle"></i>
-          <span>Admin</span>
+          <span>
+            <?php 
+              echo isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : "Guest"; 
+            ?>
+          </span>
         </div>
       </div>
-    </div>
+    </div> <!-- ✅ Closed header properly -->
 
     <!-- Search & Filter -->
     <div class="search-filter">
@@ -183,6 +421,12 @@ document.querySelectorAll(".view").forEach(btn => {
 });
 
 renderTable();
+
+if (performance.navigation.type === 2) {  
+    // Back/forward navigation
+    window.location.href = "../login.php"; // ← go up one folder
+}
+
 </script>
 </body>
 </html>
