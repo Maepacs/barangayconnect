@@ -6,11 +6,84 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-// Protect dashboard
-if (!isset($_SESSION["admin_id"])) {
-    header("Location: ../login.php"); // ← go up one folder
+// Protect admin dashboard
+if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "Admin") {
+    // If not logged in or not an admin, redirect to login
+    header("Location: ../login.php"); // go up one folder
     exit;
 }
+
+require_once("../cons/config.php"); // your DB connection
+
+// Fetch all users with role 'Official'
+$officialUsers = [];
+$sql = "SELECT user_id, full_name FROM users WHERE role = 'Official' ORDER BY full_name ASC";
+$result = $conn->query($sql);
+
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $officialUsers[] = $row;
+    }
+}
+
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['ajax']) && $_POST['ajax'] == 1) {
+  $user_id = $_POST['user_id'];
+  $position = $_POST['position'];
+  $term_start = $_POST['termStart'];
+  $term_end = $_POST['termEnd'];
+  $added_by = $_SESSION['user_id'];
+
+  $response = ["status" => "error", "message" => "Unknown error"];
+
+  if (!empty($user_id) && !empty($position) && !empty($term_start) && !empty($term_end)) {
+      // Check if the user is already an official
+      $check = $conn->prepare("SELECT * FROM barangay_officials WHERE user_id = ?");
+      $check->bind_param("i", $user_id);
+      $check->execute();
+      $check->store_result();
+
+      if ($check->num_rows === 0) {
+          // Insert into barangay_officials
+          $stmt = $conn->prepare("INSERT INTO barangay_officials (user_id, position, term_start, term_end) VALUES (?, ?, ?, ?)");
+          $stmt->bind_param("isss", $user_id, $position, $term_start, $term_end);
+          if ($stmt->execute()) {
+              // Log activity
+              $full_name = $_SESSION['full_name'];
+              $action = "$full_name added a new official (User ID: $user_id, Position: $position)";
+              $stmt_log = $conn->prepare("INSERT INTO activity_logs (user_id, action) VALUES (?, ?)");
+              $stmt_log->bind_param("is", $added_by, $action);
+              $stmt_log->execute();
+
+              // Get official name for table display
+              $stmt_name = $conn->prepare("SELECT full_name FROM users WHERE user_id = ?");
+              $stmt_name->bind_param("i", $user_id);
+              $stmt_name->execute();
+              $stmt_name->bind_result($full_name_official);
+              $stmt_name->fetch();
+
+              $response = [
+                  "status" => "success",
+                  "message" => "Official added successfully",
+                  "name" => $full_name_official,
+                  "position" => $position,
+                  "termStart" => $term_start,
+                  "termEnd" => $term_end
+              ];
+          } else {
+              $response = ["status" => "error", "message" => "Database error"];
+          }
+      } else {
+          $response = ["status" => "error", "message" => "This user is already an official"];
+      }
+  } else {
+      $response = ["status" => "error", "message" => "All fields are required"];
+  }
+
+  header('Content-Type: application/json');
+  echo json_encode($response);
+  exit;
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -411,27 +484,36 @@ th {
       <button class="btn btn-close" onclick="closeModal()">X</button>
       <h2>Add Official</h2>
       <form id="officialForm">
-        <label for="name">Full Name</label>
-        <input type="text" id="name" required>
 
-        <label for="position">Position</label>
-        <select id="position" required>
-          <option value="">Select position</option>
-          <option>Barangay Captain</option>
-          <option>Kagawad</option>
-          <option>Secretary</option>
-          <option>Treasurer</option>
-          <option>SK Chairman</option>
-        </select>
+  <label for="name">Full Name</label>
+  <select id="name" name="user_id" required>
+    <option value="">Select Official</option>
+    <?php foreach($officialUsers as $user): ?>
+      <option value="<?= htmlspecialchars($user['user_id']) ?>">
+        <?= htmlspecialchars($user['full_name']) ?>
+      </option>
+    <?php endforeach; ?>
+  </select>
 
-        <label for="termStart">Term Start</label>
-        <input type="date" id="termStart" required>
+  <label for="position">Position</label>
+  <select id="position" name="position" required>
+    <option value="">Select position</option>
+    <option>Barangay Captain</option>
+    <option>Kagawad</option>
+    <option>Secretary</option>
+    <option>Treasurer</option>
+    <option>SK Chairman</option>
+  </select>
 
-        <label for="termEnd">Term End</label>
-        <input type="date" id="termEnd" required>
+  <label for="termStart">Term Start</label>
+  <input type="date" id="termStart" name="termStart" required>
 
-        <button type="submit" class="btn btn-submit">Save</button>
-      </form>
+  <label for="termEnd">Term End</label>
+  <input type="date" id="termEnd" name="termEnd" required>
+
+  <button type="submit" class="btn btn-submit">Save</button>
+</form>
+
     </div>
   </div>
 
@@ -446,31 +528,53 @@ th {
 
     // Add Official
     form.addEventListener("submit", function(e){
-      e.preventDefault();
-      const name = document.getElementById("name").value;
-      const position = document.getElementById("position").value;
-      const start = document.getElementById("termStart").value;
-      const end = document.getElementById("termEnd").value;
+  e.preventDefault();
 
-      // Generate ID with 'O' prefix
-      let nextIdNumber = table.rows.length + 1;
-      let officialId = "O" + nextIdNumber;
+  const select = document.getElementById("name");
+  const user_id = select.value;
+  const position = document.getElementById("position").value;
+  const termStart = document.getElementById("termStart").value;
+  const termEnd = document.getElementById("termEnd").value;
 
-      const row = table.insertRow();
-      row.innerHTML = `
-        <td>${officialId}</td>
-        <td>${name}</td>
-        <td>${position}</td>
-        <td>${start}</td>
-        <td>${end}</td>
-        <td>
-          <button class="btn btn-edit">Edit</button>
-          <button class="btn btn-delete">Delete</button>
-        </td>
-      `;
-      form.reset();
-      closeModal();
-    });
+  if (!user_id || !position || !termStart || !termEnd) return;
+
+  const formData = new FormData();
+  formData.append("ajax", 1); // flag for AJAX
+  formData.append("user_id", user_id);
+  formData.append("position", position);
+  formData.append("termStart", termStart);
+  formData.append("termEnd", termEnd);
+
+  fetch("", { method: "POST", body: formData })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === "success") {
+        let nextIdNumber = table.rows.length + 1;
+        let officialId = "O" + nextIdNumber;
+
+        const row = table.insertRow();
+        row.innerHTML = `
+          <td>${officialId}</td>
+          <td>${data.name}</td>
+          <td>${data.position}</td>
+          <td>${data.termStart}</td>
+          <td>${data.termEnd}</td>
+          <td>
+            <button class="btn btn-edit">Edit</button>
+            <button class="btn btn-delete">Delete</button>
+          </td>
+        `;
+
+        form.reset();
+        closeModal();
+        alert(data.message);
+      } else {
+        alert(data.message);
+      }
+    })
+    .catch(err => console.error(err));
+});
+
 
     // Close modal if clicked outside
     window.onclick = function(e){

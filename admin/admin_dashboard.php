@@ -6,12 +6,14 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-// Protect dashboard
-if (!isset($_SESSION["admin_id"])) {
-    header("Location: ../login.php"); // ← go up one folder
+// Protect admin dashboard
+if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "Admin") {
+    // If not logged in or not an admin, redirect to login
+    header("Location: ../login.php"); // go up one folder
     exit;
 }
 ?>
+
 
 
 <!DOCTYPE html>

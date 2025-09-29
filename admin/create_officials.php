@@ -6,69 +6,75 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-// Protect dashboard
-if (!isset($_SESSION["admin_id"])) {
-    header("Location: ../login.php"); // ← go up one folder
+// Protect admin dashboard
+if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "Admin") {
+    // If not logged in or not an admin, redirect to login
+    header("Location: ../login.php"); // go up one folder
     exit;
 }
 
 require_once("../cons/config.php"); // DB connection
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $full_name        = trim($_POST["full_name"]);
-    $username         = trim($_POST["username"]);
-    $password         = trim($_POST["password"]);
-    $confirm_password = trim($_POST["confirm_password"]);
-    $role             = trim($_POST["role"]);
+  $full_name        = trim($_POST["full_name"]);
+  $username         = trim($_POST["username"]);
+  $password         = trim($_POST["password"]);
+  $confirm_password = trim($_POST["confirm_password"]);
 
-    if (empty($full_name) || empty($username) || empty($password) || empty($confirm_password) || empty($role)) {
-        die("All fields are required.");
-    }
+  // Default role to "Official"
+  $role = "Official"; 
 
-    if ($password !== $confirm_password) {
-        die("Passwords do not match.");
-    }
+  if (empty($full_name) || empty($username) || empty($password) || empty($confirm_password)) {
+      die("All fields are required.");
+  }
 
-    // Hash password
-    $password_hash   = password_hash($password, PASSWORD_DEFAULT);
-    $status          = "Active";
-    $date_registered = date("Y-m-d H:i:s");
+  if ($password !== $confirm_password) {
+      die("Passwords do not match.");
+  }
 
-    // Check if username already exists
-    $check = $conn->prepare("SELECT username FROM users WHERE username = ?");
-    $check->bind_param("s", $username);
-    $check->execute();
-    $check->store_result();
+  // Hash password
+  $password_hash   = password_hash($password, PASSWORD_DEFAULT);
+  
+  // Default status to "Approved"
+  $status          = "Approved";  
+  $date_registered = date("Y-m-d H:i:s");
 
-    if ($check->num_rows > 0) {
-        $check->close();
-        die("Username already exists.");
-    }
-    $check->close();
+  // Check if username already exists
+  $check = $conn->prepare("SELECT username FROM users WHERE username = ?");
+  $check->bind_param("s", $username);
+  $check->execute();
+  $check->store_result();
 
-    // Insert into users table
-    $stmt = $conn->prepare("INSERT INTO users (full_name, username, password_hash, role, status, date_registered) 
-                            VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("ssssss", $full_name, $username, $password_hash, $role, $status, $date_registered);
+  if ($check->num_rows > 0) {
+      $check->close();
+      die("Username already exists.");
+  }
+  $check->close();
 
-    if ($stmt->execute()) {
-        $user_id = $stmt->insert_id;
-        $stmt->close();
+  // Insert into users table
+  $stmt = $conn->prepare("INSERT INTO users (full_name, username, password_hash, role, status, date_registered) 
+                          VALUES (?, ?, ?, ?, ?, ?)");
+  $stmt->bind_param("ssssss", $full_name, $username, $password_hash, $role, $status, $date_registered);
 
-        // Insert into activity_logs
-        $action     = "Created account for $full_name ($role)";
-        $created_at = date("Y-m-d H:i:s");
-        $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, created_at) VALUES (?, ?, ?)");
-        $logStmt->bind_param("iss", $user_id, $action, $created_at);
-        $logStmt->execute();
-        $logStmt->close();
+  if ($stmt->execute()) {
+      $user_id = $stmt->insert_id;
+      $stmt->close();
 
-        echo "<script>alert('Account created successfully!'); window.location.href='admin_dashboard.php';</script>";
-        exit;
-    } else {
-        die("Error: " . $stmt->error);
-    }
+      // Insert into activity_logs
+      $action     = "Created account for $full_name ($role)";
+      $created_at = date("Y-m-d H:i:s");
+      $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, created_at) VALUES (?, ?, ?)");
+      $logStmt->bind_param("iss", $user_id, $action, $created_at);
+      $logStmt->execute();
+      $logStmt->close();
+
+      echo "<script>alert('Account created successfully!'); window.location.href='admin_dashboard.php';</script>";
+      exit;
+  } else {
+      die("Error: " . $stmt->error);
+  }
 }
+
 ?>
 
 <!DOCTYPE html>

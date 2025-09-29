@@ -8,7 +8,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (!empty($username) && !empty($password)) {
         // Prepare statement to prevent SQL injection
-        $stmt = $conn->prepare("SELECT user_id, full_name, password_hash FROM users WHERE username = ?");
+        $stmt = $conn->prepare("SELECT user_id, full_name, password_hash, role FROM users WHERE username = ?");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -19,11 +19,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Verify password (assuming hashed with password_hash)
             if (password_verify($password, $row["password_hash"])) {
                 // Set session
-                $_SESSION["admin_id"] = $row["user_id"];
+                $_SESSION["user_id"] = $row["user_id"];
                 $_SESSION["full_name"] = $row["full_name"];
+                $_SESSION["role"] = $row["role"]; // store role in session
 
-                header("Location: admin/admin_dashboard.php");
-                exit;
+                // Redirect based on role
+                if ($row["role"] === "Admin") {
+                    header("Location: admin/admin_dashboard.php");
+                    exit;
+                } elseif ($row["role"] === "Official") {
+                    header("Location: officials/officials_dashboard.php");
+                    exit;
+                } elseif ($row["role"] === "Resident") {
+                    header("Location: residents/user_dashboard.php");
+                    exit;
+                } else {
+                    $error = "Unknown user role.";
+                }
             } else {
                 $error = "Invalid username or password.";
             }

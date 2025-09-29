@@ -1,3 +1,36 @@
+<?php
+session_start();
+require_once "../cons/config.php"; // make sure DB connection is included
+
+// Prevent caching
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Protect dashboard: only allow logged-in users with role 'Official'
+if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "Official") {
+    header("Location: ../login.php"); // redirect to login if not authorized
+    exit;
+}
+
+// Get user_id from session
+$user_id = $_SESSION["user_id"];
+
+// Fetch full name and position from barangay_officials
+$stmt = $conn->prepare("SELECT position FROM barangay_officials WHERE user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$stmt->bind_result($position);
+$stmt->fetch();
+$stmt->close();
+
+// Optional: store in session for reuse
+$_SESSION["position"] = $position;
+
+// Now you can use $full_name and $position
+htmlspecialchars($position);
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -100,12 +133,15 @@
           <span class="badge">#</span>
         </div>
         <div class="user">
-          <i class="fa-solid fa-user-circle"></i>
-          <span>Captain / Official</span> <!-- dynamically show role -->
-        </div>
-      </div>
-    </div>
-
+  <i class="fa-solid fa-user-circle"></i>
+  <span>
+    <?php 
+      echo isset($_SESSION["full_name"]) ? $_SESSION["full_name"] . " / " . $_SESSION["position"] : "Guest"; 
+    ?>
+  </span>
+</div>
+  </div>
+  </div>
     <!-- Dashboard Cards -->
     <div class="cards">
       <div class="card">
