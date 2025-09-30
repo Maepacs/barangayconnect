@@ -1,3 +1,71 @@
+<?php
+session_start();
+require_once "cons/config.php";
+
+$message = "";
+
+// AJAX username check
+if (isset($_POST['check_username'])) {
+    $username = trim($_POST['check_username']);
+
+    $stmt = $conn->prepare("SELECT user_id FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $stmt->store_result();
+
+    echo json_encode(["status" => $stmt->num_rows > 0 ? "taken" : "available"]);
+    $stmt->close();
+    exit;
+}
+
+// Registration form submit
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['check_username'])) {
+    $full_name = trim($_POST['fullName'] ?? '');
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirm_password = $_POST['confirmPassword'] ?? '';
+
+    if (empty($full_name) || empty($username) || empty($password) || empty($confirm_password)) {
+        $message = "All fields are required.";
+    } elseif ($password !== $confirm_password) {
+        $message = "Passwords do not match.";
+    } else {
+        $stmt = $conn->prepare("SELECT user_id FROM users WHERE username = ?");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $stmt->store_result();
+
+        if ($stmt->num_rows > 0) {
+            $message = "Username already taken.";
+        } else {
+            $password_hash = password_hash($password, PASSWORD_BCRYPT);
+            $role = "Resident";
+            $status = "Active";
+            $date_registered = date("Y-m-d H:i:s");
+
+            $insert = $conn->prepare("INSERT INTO users (full_name, username, password_hash, role, status, date_registered) VALUES (?, ?, ?, ?, ?, ?)");
+            $insert->bind_param("ssssss", $full_name, $username, $password_hash, $role, $status, $date_registered);
+
+            if ($insert->execute()) {
+                $user_id = $insert->insert_id;
+
+                $action = "New user registered";
+                $log = $conn->prepare("INSERT INTO activity_logs (user_id, action, created_at) VALUES (?, ?, NOW())");
+                $log->bind_param("is", $user_id, $action);
+                $log->execute();
+                $log->close();
+
+                $message = "Registration successful!";
+            } else {
+                $message = "An unexpected error occurred.";
+            }
+            $insert->close();
+        }
+        $stmt->close();
+    }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -208,52 +276,52 @@ h1 span {
   </style>
 </head>
 <body>
-  <div class="container">
-  <h1>Welcome to <br><span>Barangay Connect</span></h1>
-  <p class="subtitle">Please create your account</p>
-    <form id="registrationForm" novalidate>
-    <div class="form-group">
-  <label for="fullName">Name</label>
-  <div class="input-container">
-    <i class="fa-solid fa-user"></i>
-    <input type="text" id="fullName" name="fullName" placeholder="Enter your full name">
-  </div>
-  <div class="error-message" id="fullNameError">Full name must be at least 2 characters long</div>
-</div>
+<div class="container">
+    <h1>Welcome to <br><span>Barangay Connect</span></h1>
+    <p class="subtitle">Please create your account</p>
+    <form id="registrationForm" method="POST" action="register.php" novalidate>
+      <div class="form-group">
+        <label for="fullName">Name</label>
+        <div class="input-container">
+          <i class="fa-solid fa-user"></i>
+          <input type="text" id="fullName" name="fullName" placeholder="Enter your full name">
+        </div>
+        <div class="error-message" id="fullNameError">Full name must be at least 2 characters long</div>
+      </div>
 
-<div class="form-group">
-  <label for="username">Username</label>
-  <div class="input-container">
-    <i class="fa-solid fa-id-card"></i>
-    <input type="text" id="username" name="username" placeholder="Create username">
-  </div>
-  <div class="error-message" id="usernameError">Username must be 3–20 characters (letters, numbers, underscores)</div>
-  <div class="success-message" id="usernameSuccess">Username is available</div>
-</div>
+      <div class="form-group">
+        <label for="username">Username</label>
+        <div class="input-container">
+          <i class="fa-solid fa-id-card"></i>
+          <input type="text" id="username" name="username" placeholder="Create username">
+        </div>
+        <div class="error-message" id="usernameError">Username must be 3–20 characters (letters, numbers, underscores)</div>
+        <div class="success-message" id="usernameSuccess">Username is available</div>
+      </div>
 
-<div class="form-group">
-  <label for="password">Password</label>
-  <div class="password-container">
-    <i class="fa-solid fa-lock"></i>
-    <input type="password" id="password" name="password" placeholder="Create a password">
-    <button type="button" class="toggle-password" id="togglePassword">
-      <i class="fa-solid fa-eye"></i>
-    </button>
-  </div>
-  <div class="error-message" id="passwordError">Password must be at least 8 characters with uppercase, lowercase, number, and special character</div>
-</div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="password-container">
+          <i class="fa-solid fa-lock"></i>
+          <input type="password" id="password" name="password" placeholder="Create a password">
+          <button type="button" class="toggle-password" id="togglePassword">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+        <div class="error-message" id="passwordError">Password must be at least 8 characters with uppercase, lowercase, number, and special character</div>
+      </div>
 
-<div class="form-group">
-  <label for="confirmPassword">Confirm Password</label>
-  <div class="password-container">
-    <i class="fa-solid fa-lock"></i>
-    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password">
-    <button type="button" class="toggle-password" id="toggleConfirmPassword">
-      <i class="fa-solid fa-eye"></i>
-    </button>
-  </div>
-  <div class="error-message" id="confirmPasswordError">Passwords do not match</div>
-</div>
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <div class="password-container">
+          <i class="fa-solid fa-lock"></i>
+          <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password">
+          <button type="button" class="toggle-password" id="toggleConfirmPassword">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+        <div class="error-message" id="confirmPasswordError">Passwords do not match</div>
+      </div>
 
       <button type="submit">Register</button>
 
@@ -263,97 +331,180 @@ h1 span {
     </form>
   </div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const form = document.getElementById('registrationForm');
-      const fullNameInput = document.getElementById('fullName');
-      const usernameInput = document.getElementById('username');
-      const passwordInput = document.getElementById('password');
-      const confirmPasswordInput = document.getElementById('confirmPassword');
-      const togglePasswordBtn = document.getElementById('togglePassword');
-      const toggleConfirmPasswordBtn = document.getElementById('toggleConfirmPassword');
 
-      // Toggle password visibility
-      function togglePassword(input, button) {
-        const icon = button.querySelector('i');
-        if (input.type === 'password') {
-          input.type = 'text';
-          icon.classList.replace('fa-eye', 'fa-eye-slash');
+<script>
+
+<?php if (!empty($message)) : ?>
+
+document.addEventListener("DOMContentLoaded", () => {
+  alert("<?= $message ?>");
+  <?php if ($message === "Registration successful!") : ?>
+    window.location.href = "login.php";
+  <?php endif; ?>
+});
+
+<?php endif; ?>
+
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('registrationForm');
+  const fullNameInput = document.getElementById('fullName');
+  const usernameInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  const confirmPasswordInput = document.getElementById('confirmPassword');
+  const togglePasswordBtn = document.getElementById('togglePassword');
+  const toggleConfirmPasswordBtn = document.getElementById('toggleConfirmPassword');
+
+  // ✅ Toggle password visibility
+  function togglePassword(input, button) {
+    const icon = button.querySelector('i');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+      input.type = 'password';
+      icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+  }
+  togglePasswordBtn.addEventListener('click', () => togglePassword(passwordInput, togglePasswordBtn));
+  toggleConfirmPasswordBtn.addEventListener('click', () => togglePassword(confirmPasswordInput, toggleConfirmPasswordBtn));
+
+  // ✅ Helper for validation UI
+  function setValidation(input, isValid, errorId, successId = null) {
+    const errorEl = document.getElementById(errorId);
+    const successEl = successId ? document.getElementById(successId) : null;
+
+    if (isValid) {
+      input.classList.remove('input-error');
+      input.classList.add('input-success');
+      errorEl.style.display = 'none';
+      if (successEl) successEl.style.display = 'block';
+    } else {
+      input.classList.add('input-error');
+      input.classList.remove('input-success');
+      errorEl.style.display = 'block';
+      if (successEl) successEl.style.display = 'none';
+    }
+    return isValid;
+  }
+
+  // ✅ Individual validations
+  function validateFullName() {
+    return setValidation(fullNameInput, fullNameInput.value.trim().length >= 2, 'fullNameError');
+  }
+
+  function validatePassword() {
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+    return setValidation(passwordInput, regex.test(passwordInput.value), 'passwordError');
+  }
+
+  function validateConfirmPassword() {
+    const isValid = confirmPasswordInput.value === passwordInput.value && confirmPasswordInput.value !== '';
+    return setValidation(confirmPasswordInput, isValid, 'confirmPasswordError');
+  }
+
+  // ✅ Forbidden username check
+  function containsForbiddenWord(username) {
+    const forbiddenPatterns = [/admin/i, /administrator/i, /superadmin/i, /barangayadmin/i, /root/i, /sysadmin/i];
+    return forbiddenPatterns.some(pattern => pattern.test(username));
+  }
+
+  // ✅ Live username validation with debounce + AJAX
+  let usernameTimeout;
+  async function validateUsernameLive() {
+    clearTimeout(usernameTimeout);
+    usernameTimeout = setTimeout(async () => {
+      const value = usernameInput.value.trim();
+      const regex = /^[a-zA-Z0-9_]{3,20}$/;
+
+      // Format check
+      if (!regex.test(value)) {
+        setValidation(usernameInput, false, 'usernameError', 'usernameSuccess');
+        document.getElementById('usernameError').textContent = "Username must be 3–20 characters (letters, numbers, underscores)";
+        return;
+      }
+
+      // Forbidden word check
+      if (containsForbiddenWord(value)) {
+        usernameInput.classList.add('input-error');
+        usernameInput.classList.remove('input-success');
+        document.getElementById('usernameError').textContent = "Usernames containing 'admin' or related words are not allowed.";
+        document.getElementById('usernameError').style.display = 'block';
+        document.getElementById('usernameSuccess').style.display = 'none';
+        return;
+      }
+
+      // ✅ AJAX username availability check
+      try {
+        const response = await fetch('register.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'check_username=' + encodeURIComponent(value)
+        });
+        const data = await response.json();
+
+        if (data.status === 'taken') {
+          usernameInput.classList.add('input-error');
+          usernameInput.classList.remove('input-success');
+          document.getElementById('usernameError').textContent = "Username already taken.";
+          document.getElementById('usernameError').style.display = 'block';
+          document.getElementById('usernameSuccess').style.display = 'none';
         } else {
-          input.type = 'password';
-          icon.classList.replace('fa-eye-slash', 'fa-eye');
+          usernameInput.classList.remove('input-error');
+          usernameInput.classList.add('input-success');
+          document.getElementById('usernameError').style.display = 'none';
+          document.getElementById('usernameSuccess').style.display = 'block';
         }
+      } catch (err) {
+        console.error('Error checking username:', err);
       }
+    }, 500); // ✅ delay 0.5s
+  }
 
-      togglePasswordBtn.addEventListener('click', () => togglePassword(passwordInput, togglePasswordBtn));
-      toggleConfirmPasswordBtn.addEventListener('click', () => togglePassword(confirmPasswordInput, toggleConfirmPasswordBtn));
+  // ✅ Event listeners
+  fullNameInput.addEventListener('blur', validateFullName);
+  usernameInput.addEventListener('input', validateUsernameLive); // live while typing
+  passwordInput.addEventListener('blur', validatePassword);
+  confirmPasswordInput.addEventListener('blur', validateConfirmPassword);
 
-      // Validation functions
-      function validateFullName() {
-        return setValidation(fullNameInput, fullNameInput.value.trim().length >= 2, 'fullNameError');
-      }
+  // ✅ Final form submit validation
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
 
-      function validateUsername() {
+    const nameOk = validateFullName();
+    const passOk = validatePassword();
+    const confirmOk = validateConfirmPassword();
+
+    // Final username check
+    const usernameValid = await new Promise(resolve => {
+      clearTimeout(usernameTimeout);
+      usernameTimeout = setTimeout(async () => {
+        const value = usernameInput.value.trim();
         const regex = /^[a-zA-Z0-9_]{3,20}$/;
-        const isValid = regex.test(usernameInput.value.trim());
-        return setValidation(usernameInput, isValid, 'usernameError', 'usernameSuccess');
-      }
 
-      function validatePassword() {
-        const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
-        return setValidation(passwordInput, regex.test(passwordInput.value), 'passwordError');
-      }
-
-      function validateConfirmPassword() {
-        const isValid = confirmPasswordInput.value === passwordInput.value && confirmPasswordInput.value !== '';
-        return setValidation(confirmPasswordInput, isValid, 'confirmPasswordError');
-      }
-
-      // Helper for showing errors/success
-      function setValidation(input, isValid, errorId, successId = null) {
-        const errorEl = document.getElementById(errorId);
-        const successEl = successId ? document.getElementById(successId) : null;
-
-        if (isValid) {
-          input.classList.remove('input-error');
-          input.classList.add('input-success');
-          errorEl.style.display = 'none';
-          if (successEl) successEl.style.display = 'block';
-        } else {
-          input.classList.add('input-error');
-          input.classList.remove('input-success');
-          errorEl.style.display = 'block';
-          if (successEl) successEl.style.display = 'none';
+        if (!regex.test(value) || containsForbiddenWord(value)) {
+          resolve(false);
+          return;
         }
-        return isValid;
-      }
 
-      // Events
-      fullNameInput.addEventListener('blur', validateFullName);
-      usernameInput.addEventListener('blur', validateUsername);
-      passwordInput.addEventListener('blur', validatePassword);
-      confirmPasswordInput.addEventListener('blur', validateConfirmPassword);
-
-      // Form submit
-      form.addEventListener('submit', e => {
-        e.preventDefault();
-        const valid = [
-          validateFullName(),
-          validateUsername(),
-          validatePassword(),
-          validateConfirmPassword()
-        ].every(Boolean);
-
-        if (valid) {
-          alert('Registration successful!');
-          form.reset();
-          form.querySelectorAll('input').forEach(i => i.classList.remove('input-success'));
-          document.querySelectorAll('.success-message').forEach(m => m.style.display = 'none');
-        } else {
-          alert('Please fix the errors before submitting.');
-        }
-      });
+        const response = await fetch('register.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'check_username=' + encodeURIComponent(value)
+        });
+        const data = await response.json();
+        resolve(data.status === 'available');
+      }, 0);
     });
-  </script>
+
+    if (nameOk && passOk && confirmOk && usernameValid) {
+      form.submit(); // ✅ real submit
+    } else {
+      alert('Please fix the errors before submitting.');
+    }
+  });
+});
+</script>
+
+
 </body>
 </html>
