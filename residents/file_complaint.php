@@ -1,3 +1,118 @@
+<?php
+session_start();
+require_once "../cons/config.php"; // DB connection
+
+// Prevent caching
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Protect resident dashboard
+if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "Resident") {
+    header("Location: ../login.php");
+    exit;
+}
+
+$user_id = $_SESSION["user_id"];
+
+// Fetch fullname and role
+$stmt = $conn->prepare("SELECT fullname, role FROM users WHERE user_id = ?");
+$stmt->bind_param("s", $user_id);
+$stmt->execute();
+$stmt->bind_result($fullname, $role);
+$stmt->fetch();
+$stmt->close();
+
+// Store in session
+$_SESSION["role"] = $role;
+$_SESSION["fullname"] = $fullname;
+
+// Escape output
+$role = htmlspecialchars($role);
+$fullname = htmlspecialchars($fullname);
+
+// Handle form submission
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
+    // Validate inputs
+    $complaint_title = isset($_POST["title"]) ? trim($_POST["title"]) : '';
+    $complaint_type  = isset($_POST["category"]) ? trim($_POST["category"]) : '';
+    $description     = isset($_POST["description"]) ? trim($_POST["description"]) : '';
+
+    if (empty($complaint_title) || empty($complaint_type) || empty($description)) {
+        echo "<script>alert('Please fill all required fields.'); window.history.back();</script>";
+        exit;
+    }
+
+    // Handle image upload
+    $image_file = null;
+    if (!empty($_FILES["image"]["name"])) {
+        $target_dir = "../uploads/complaints/";
+        if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
+
+        $file_name = time() . "_" . basename($_FILES["image"]["name"]);
+        $target_file = $target_dir . $file_name;
+        $file_type = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+        $allowed_types = ["jpg", "jpeg", "png", "gif"];
+
+        if (in_array($file_type, $allowed_types)) {
+            if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
+                $image_file = $file_name;
+            } else {
+                echo "<script>alert('Failed to upload image.'); window.history.back();</script>";
+                exit;
+            }
+        } else {
+            echo "<script>alert('Invalid image file type.'); window.history.back();</script>";
+            exit;
+        }
+    }
+
+    // Generate complaint ID
+    $query = $conn->query("SELECT complaint_id FROM complaints ORDER BY CAST(SUBSTRING(complaint_id, 2) AS UNSIGNED) DESC LIMIT 1");
+    if ($query->num_rows > 0) {
+        $row = $query->fetch_assoc();
+        $num = (int)substr($row['complaint_id'], 1);
+        $newId = 'C' . str_pad($num + 1, 6, '0', STR_PAD_LEFT);
+    } else {
+        $newId = 'C000001';
+    }
+
+    // Insert complaint
+    $stmt = $conn->prepare("INSERT INTO complaints (complaint_id, user_id, complaint_title, complaint_type, description, image_file, status) VALUES (?, ?, ?, ?, ?, ?, 'Pending')");
+    $stmt->bind_param("ssssss", $newId, $user_id, $complaint_title, $complaint_type, $description, $image_file);
+
+    if ($stmt->execute()) {
+
+        // Generate log ID
+        $logRes = $conn->query("SELECT log_id FROM activity_logs ORDER BY CAST(SUBSTRING(log_id, 4) AS UNSIGNED) DESC LIMIT 1");
+        if ($logRes && $logRes->num_rows > 0) {
+            $logRow = $logRes->fetch_assoc();
+            $newLogNum = (int)substr($logRow["log_id"], 3) + 1;
+        } else {
+            $newLogNum = 1;
+        }
+        $log_id = "LOG" . str_pad($newLogNum, 6, "0", STR_PAD_LEFT);
+        $action = "Resident $fullname filed a complaint (ID: $newId)";
+        $created_at = date("Y-m-d H:i:s");
+
+        // Insert activity log
+        $logStmt = $conn->prepare("INSERT INTO activity_logs (log_id, user_id, action, created_at) VALUES (?, ?, ?, ?)");
+        $logStmt->bind_param("ssss", $log_id, $user_id, $action, $created_at);
+        $logStmt->execute();
+        $logStmt->close();
+
+        echo "<script>alert('Complaint submitted successfully!'); window.location='file_complaint.php';</script>";
+
+    } else {
+        echo "<script>alert('Error: " . $stmt->error . "'); window.history.back();</script>";
+    }
+
+    $stmt->close();
+}
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -80,25 +195,33 @@ body {
     color: #fff;
 }
 
-/* Main Content */
 .main-content {
-    margin-left: 250px;
-    flex: 1;
+    position: fixed;
+    top: 0;
+    left: 250px;       /* since you have sidebar = 250px */
+    right: 0;
+    bottom: 0;
     display: flex;
     flex-direction: column;
-    background: rgba(0, 0, 0, 0.55);
+    background:rgba(52, 58, 64, 0.68);
     color: #fff;
     padding: 20px;
+    overflow-y: auto;  /* enable scrolling inside */
 }
 
 /* Header */
 .header {
+    position: sticky;     /* stays at top when scrolling */
+    top: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding-bottom: 15px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 10;          /* make sure it's above content */
 }
+
+
 
 .header h1 {
     font-size: 22px;
@@ -147,10 +270,11 @@ body {
 /* Complaint Form */
 .complaint-form {
     background: rgba(255, 255, 255, 0.1);
-    padding: 25px;
+    padding: 20px;
     border-radius: 12px;
     max-width: 600px;
     margin: 30px auto;
+    width: 40%;
 }
 
 .complaint-form h2 {
@@ -226,12 +350,30 @@ body {
 }
 
 /* Image Preview */
+.preview-container {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* space between image and filename */
+    margin-top: 10px;
+}
+
 #imagePreview {
     display: none;
-    margin-top: 10px;
-    max-width: 100%;
+    width: 250px;
+    height: 250px;
+    object-fit: cover;
     border-radius: 6px;
     border: 1px solid #ccc;
+}
+
+.file-name {
+    font-size: 14px;
+    color: #555;
+    font-weight: bold;
+    max-width: 200px;   /* limit width */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
   </style>
@@ -263,16 +405,20 @@ body {
         <span class="badge">3</span>
       </div>
       <div class="user">
-        <i class="fa-solid fa-user-circle"></i>
-        <span>Resident</span>
+      <i class="fa-solid fa-user-circle"></i>
+  <span>
+    <?php 
+      echo isset($_SESSION["fullname"]) ? $_SESSION["fullname"] . " / " . $_SESSION["role"] : "Guest"; 
+    ?>
+  </span>
+</div>
       </div>
-    </div>
-  </div>
+    </div> <!-- ✅ Closed header properly -->
 
   <!-- Complaint Form -->
   <div class="complaint-form">
     <h2>New Complaint</h2>
-    <form action="submit_complaint.php" method="POST" enctype="multipart/form-data">
+    <form action="file_complaint.php" method="POST" enctype="multipart/form-data">
       <label for="title">Complaint Title</label>
       <input type="text" id="title" name="title" placeholder="Enter complaint title" required>
 
@@ -294,9 +440,11 @@ body {
         <input type="file" id="image" name="image" accept="image/*" onchange="previewImage(event)">
       </label>
 
-      <!-- Image Preview -->
-      <img id="imagePreview" src="#" alt="Image Preview">
-
+    <!-- Preview + Filename -->
+<div class="preview-container">
+  <img id="imagePreview" src="#" alt="Image Preview">
+  <span id="fileName" class="file-name" title=""></span>
+</div><br>
       <button type="submit">Submit Complaint</button>
     </form>
   </div>
@@ -304,19 +452,33 @@ body {
 </div>
 
 <script>
-  function previewImage(event) {
-    const input = event.target;
-    const preview = document.getElementById('imagePreview');
-    if (input.files && input.files[0]) {
+function previewImage(event) {
+  const input = event.target;
+  const preview = document.getElementById('imagePreview');
+  const fileName = document.getElementById('fileName');
+  
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    fileName.textContent = file.name;
+    fileName.title = file.name;
+
+    if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = function(e) {
         preview.src = e.target.result;
-        preview.style.display = 'block';
+        preview.style.display = "block";
       }
-      reader.readAsDataURL(input.files[0]);
+      reader.readAsDataURL(file);
+    } else {
+      preview.src = "../assets/images/file-icon.png"; // use your own default icon
+      preview.style.display = "block";
     }
   }
+}
+
 </script>
+
+
 
 </body>
 </html>

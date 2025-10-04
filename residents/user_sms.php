@@ -1,3 +1,37 @@
+<?php
+session_start();
+require_once "../cons/config.php"; // Make sure this defines $conn
+
+// Prevent caching
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Protect resident dashboard
+if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "Resident") {
+    header("Location: ../login.php");
+    exit;
+}
+
+// Get user_id from session
+$user_id = $_SESSION["user_id"];
+
+// Fetch fullname and role from users table
+$stmt = $conn->prepare("SELECT fullname, role FROM users WHERE user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$stmt->bind_result($fullname, $role);
+$stmt->fetch();
+$stmt->close();
+
+// Optional: store in session for reuse
+$_SESSION["role"] = $role;
+$_SESSION["fullname"] = $fullname;
+
+// Escape output for safety
+$role = htmlspecialchars($role);
+$fullname = htmlspecialchars($fullname);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -82,22 +116,29 @@ body {
 
 /* Main Content */
 .main-content {
-    margin-left: 250px;
-    flex: 1;
+    position: fixed;
+    top: 0;
+    left: 250px;       /* since you have sidebar = 250px */
+    right: 0;
+    bottom: 0;
     display: flex;
     flex-direction: column;
-    background: rgba(0, 0, 0, 0.55);
+    background:rgba(52, 58, 64, 0.68);
     color: #fff;
     padding: 20px;
+    overflow-y: auto;  /* enable scrolling inside */
 }
 
 /* Header */
 .header {
+    position: sticky;     /* stays at top when scrolling */
+    top: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding-bottom: 15px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 10;          /* make sure it's above content */
 }
 
 .header h1 {
@@ -224,11 +265,16 @@ body {
         <span class="badge">3</span>
       </div>
       <div class="user">
-        <i class="fa-solid fa-user-circle"></i>
-        <span>Resident</span>
+      <i class="fa-solid fa-user-circle"></i>
+  <span>
+    <?php 
+      echo isset($_SESSION["fullname"]) ? $_SESSION["fullname"] . " / " . $_SESSION["role"] : "Guest"; 
+    ?>
+  </span>
+</div>
       </div>
-    </div>
-  </div>
+    </div> <!-- ✅ Closed header properly -->
+
 
   <!-- SMS Table -->
   <table class="sms-table">

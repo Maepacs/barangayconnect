@@ -8,7 +8,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (!empty($username) && !empty($password)) {
         // Prepare statement to prevent SQL injection
-        $stmt = $conn->prepare("SELECT user_id, full_name, password_hash, role FROM users WHERE username = ?");
+        $stmt = $conn->prepare("SELECT user_id, fullname, password_hash, role FROM users WHERE username = ?");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -20,7 +20,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if (password_verify($password, $row["password_hash"])) {
                 // Set session
                 $_SESSION["user_id"] = $row["user_id"];
-                $_SESSION["full_name"] = $row["full_name"];
+                $_SESSION["fullname"] = $row["fullname"];
                 $_SESSION["role"] = $row["role"]; // store role in session
 
                 // Redirect based on role

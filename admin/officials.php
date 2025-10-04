@@ -17,7 +17,7 @@ require_once("../cons/config.php"); // your DB connection
 
 // Fetch all users with role 'Official'
 $officialUsers = [];
-$sql = "SELECT user_id, full_name FROM users WHERE role = 'Official' ORDER BY full_name ASC";
+$sql = "SELECT user_id, fullname FROM users WHERE role = 'Official' ORDER BY fullname ASC";
 $result = $conn->query($sql);
 
 if ($result->num_rows > 0) {
@@ -48,23 +48,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['ajax']) && $_POST['aj
           $stmt->bind_param("isss", $user_id, $position, $term_start, $term_end);
           if ($stmt->execute()) {
               // Log activity
-              $full_name = $_SESSION['full_name'];
-              $action = "$full_name added a new official (User ID: $user_id, Position: $position)";
+              $fullname = $_SESSION['fullname'];
+              $action = "$fullname added a new official (User ID: $user_id, Position: $position)";
               $stmt_log = $conn->prepare("INSERT INTO activity_logs (user_id, action) VALUES (?, ?)");
               $stmt_log->bind_param("is", $added_by, $action);
               $stmt_log->execute();
 
               // Get official name for table display
-              $stmt_name = $conn->prepare("SELECT full_name FROM users WHERE user_id = ?");
+              $stmt_name = $conn->prepare("SELECT fullname FROM users WHERE user_id = ?");
               $stmt_name->bind_param("i", $user_id);
               $stmt_name->execute();
-              $stmt_name->bind_result($full_name_official);
+              $stmt_name->bind_result($fullname_official);
               $stmt_name->fetch();
 
               $response = [
                   "status" => "success",
                   "message" => "Official added successfully",
-                  "name" => $full_name_official,
+                  "name" => $fullname_official,
                   "position" => $position,
                   "termStart" => $term_start,
                   "termEnd" => $term_end
@@ -421,7 +421,7 @@ th {
           <i class="fa-solid fa-user-circle"></i>
           <span>
             <?php 
-              echo isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : "Guest"; 
+              echo isset($_SESSION['fullname']) ? htmlspecialchars($_SESSION['fullname']) : "Guest"; 
             ?>
           </span>
         </div>
@@ -490,7 +490,7 @@ th {
     <option value="">Select Official</option>
     <?php foreach($officialUsers as $user): ?>
       <option value="<?= htmlspecialchars($user['user_id']) ?>">
-        <?= htmlspecialchars($user['full_name']) ?>
+        <?= htmlspecialchars($user['fullname']) ?>
       </option>
     <?php endforeach; ?>
   </select>

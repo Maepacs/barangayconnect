@@ -322,14 +322,18 @@ h2.section-title {
         </div>
         <div class="user">
           <i class="fa-solid fa-user-circle"></i>
-          <span>
-            <?php 
-              echo isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : "Guest"; 
-            ?>
-          </span>
+          <!-- ✅ Use consistent session variable -->
+          <span>  <?php 
+             if(isset($_SESSION["fullname"], $_SESSION["role"])) {
+              echo htmlspecialchars($_SESSION["fullname"]) . " / " . htmlspecialchars($_SESSION["role"]);
+          } else {
+              echo "Guest";
+          }
+          
+            ?></span>
         </div>
       </div>
-    </div> <!-- ✅ Closed header properly -->
+    </div>
 
     <!-- Search Bar -->
     <div class="search-bar">

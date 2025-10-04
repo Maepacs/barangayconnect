@@ -1,3 +1,63 @@
+<?php
+session_start();
+require_once "../cons/config.php"; // Make sure this defines $conn
+
+// Prevent caching
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Protect resident dashboard
+if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "Resident") {
+    header("Location: ../login.php");
+    exit;
+}
+
+// Get user_id from session
+$user_id = $_SESSION["user_id"];
+
+// ✅ Fetch fullname and role from users table
+$stmt = $conn->prepare("SELECT fullname, role FROM users WHERE user_id = ?");
+$stmt->bind_param("s", $user_id); // user_id is string like UJ0001
+$stmt->execute();
+$stmt->bind_result($fullname, $role);
+$stmt->fetch();
+$stmt->close();
+
+// Optional: store in session for reuse
+$_SESSION["role"] = $role;
+$_SESSION["fullname"] = $fullname;
+
+// Escape output for safety
+$role = htmlspecialchars($role);
+$fullname = htmlspecialchars($fullname);
+
+// ✅ Fetch complaints for this user
+$stmt = $conn->prepare("SELECT complaint_id, DATE(date_filed) AS filed_date, status 
+                        FROM complaints 
+                        WHERE user_id = ? 
+                        ORDER BY date_filed DESC");
+$stmt->bind_param("s", $user_id);
+$stmt->execute();
+$complaintsResult = $stmt->get_result();
+$stmt->close();
+
+// ✅ Fetch document requests for this user
+$stmt = $conn->prepare("SELECT request_id, document_type, status, date_request 
+                        FROM document_request 
+                        WHERE user_id = ? 
+                        ORDER BY date_request DESC");
+$stmt->bind_param("s", $user_id);
+$stmt->execute();
+$docRequestsResult = $stmt->get_result();
+$stmt->close();
+
+// ✅ Count records AFTER fetching
+$complaintsCount   = ($complaintsResult)   ? $complaintsResult->num_rows   : 0;
+$docRequestsCount  = ($docRequestsResult)  ? $docRequestsResult->num_rows  : 0;
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -82,23 +142,30 @@
 
     /* Main Content */
     .main-content {
-        margin-left: 250px;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        background: rgba(0, 0, 0, 0.55);
-        color: #fff;
-        padding: 20px;
-    }
+    position: fixed;
+    top: 0;
+    left: 250px;       /* since you have sidebar = 250px */
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    background:rgba(52, 58, 64, 0.68);
+    color: #fff;
+    padding: 20px;
+    overflow-y: auto;  /* enable scrolling inside */
+}
 
-    /* Header */
-    .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: 15px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    }
+/* Header */
+.header {
+    position: sticky;     /* stays at top when scrolling */
+    top: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 10;          /* make sure it's above content */
+}
 
     .header h1 {
         font-size: 22px;
@@ -274,84 +341,99 @@
         <span class="badge">3</span>
       </div>
       <div class="user">
-        <i class="fa-solid fa-user-circle"></i>
-        <span>Resident</span>
+      <i class="fa-solid fa-user-circle"></i>
+  <span>
+    <?php 
+      echo isset($_SESSION["fullname"]) ? $_SESSION["fullname"] . " / " . $_SESSION["role"] : "Guest"; 
+    ?>
+  </span>
+</div>
       </div>
-    </div>
-  </div>
+    </div> <!-- ✅ Closed header properly -->
 
-  <!-- Dashboard Cards -->
-  <div class="cards">
-    <div class="card complaints">
-      <i class="fa-solid fa-comments"></i>
-      <h3>5</h3>
-      <p>My Complaints</p>
-    </div>
-    <div class="card documents">
-      <i class="fa-solid fa-file-lines"></i>
-      <h3>2</h3>
-      <p>My Document Requests</p>
-    </div>
-    <div class="card notifications">
-      <i class="fa-solid fa-bell"></i>
-      <h3>3</h3>
-      <p>Notifications</p>
-    </div>
+ <!-- Dashboard Cards -->
+<div class="cards">
+  <div class="card complaints">
+    <i class="fa-solid fa-comments"></i>
+    <h3><?php echo $complaintsCount; ?></h3>
+    <p>My Complaints</p>
   </div>
+  <div class="card documents">
+    <i class="fa-solid fa-file-lines"></i>
+    <h3><?php echo $docRequestsCount; ?></h3>
+    <p>My Document Requests</p>
+  </div>
+</div>
 
   <!-- History Tables -->
   <div class="history-tables">
-    <!-- Complaint History Table -->
-    <div class="table-container">
-      <h3>Complaint History</h3>
-      <table>
-        <thead>
+<!-- Complaint History Table -->
+<!-- Complaint History Table -->
+<div class="table-container">
+  <h3>Complaint History</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Complaint ID</th>
+        <th>Date</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php if ($complaintsResult && $complaintsResult->num_rows > 0): ?>
+        <?php while ($row = $complaintsResult->fetch_assoc()): ?>
           <tr>
-            <th>Complaint ID</th>
-            <th>Date</th>
-            <th>Status</th>
+            <td><?php echo htmlspecialchars($row['complaint_id']); ?></td>
+            <td><?php echo htmlspecialchars($row['filed_date']); ?></td>
+            <td>
+              <span class="status <?php echo strtolower($row['status']); ?>">
+                <?php echo htmlspecialchars($row['status']); ?>
+              </span>
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>C001</td>
-            <td>2025-09-20</td>
-            <td><span class="status pending">Pending</span></td>
-          </tr>
-          <tr>
-            <td>C002</td>
-            <td>2025-09-22</td>
-            <td><span class="status approved">Approved</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <?php endwhile; ?>
+      <?php else: ?>
+        <tr>
+          <td colspan="3">No complaints found.</td>
+        </tr>
+      <?php endif; ?>
+    </tbody>
+  </table>
+</div>
 
-    <!-- Document Request History Table -->
-    <div class="table-container">
-      <h3>Document Request History</h3>
-      <table>
-        <thead>
+<!-- Document Request History Table -->
+<div class="table-container">
+  <h3>Document Request History</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Request ID</th>
+        <th>Document</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <?php if ($docRequestsResult && $docRequestsResult->num_rows > 0): ?>
+        <?php while ($row = $docRequestsResult->fetch_assoc()): ?>
           <tr>
-            <th>Request ID</th>
-            <th>Document</th>
-            <th>Status</th>
+            <td><?php echo htmlspecialchars($row["request_id"]); ?></td>
+            <td><?php echo htmlspecialchars($row["document_type"]); ?></td>
+            <td>
+              <span class="status <?php echo strtolower($row["status"]); ?>">
+                <?php echo htmlspecialchars($row["status"]); ?>
+              </span>
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>D001</td>
-            <td>Barangay Clearance</td>
-            <td><span class="status pending">Pending</span></td>
-          </tr>
-          <tr>
-            <td>D002</td>
-            <td>Certificate of Residency</td>
-            <td><span class="status approved">Approved</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <?php endwhile; ?>
+      <?php else: ?>
+        <tr>
+          <td colspan="3">No requests found.</td>
+        </tr>
+      <?php endif; ?>
+    </tbody>
+  </table>
+</div>
+
 
 
     <!-- SMS History Table -->

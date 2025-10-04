@@ -1,10 +1,16 @@
 <?php
 session_start();
-require_once "cons/config.php";
+
+// Prevent caching
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+require_once("../barangayconnect/cons/config.php"); // DB connection
 
 $message = "";
 
-// AJAX username check
+// ✅ Handle AJAX username check
 if (isset($_POST['check_username'])) {
     $username = trim($_POST['check_username']);
 
@@ -13,58 +19,103 @@ if (isset($_POST['check_username'])) {
     $stmt->execute();
     $stmt->store_result();
 
-    echo json_encode(["status" => $stmt->num_rows > 0 ? "taken" : "available"]);
+    echo json_encode([
+        "status" => $stmt->num_rows > 0 ? "taken" : "available"
+    ]);
+
     $stmt->close();
-    exit;
+    exit; 
 }
 
-// Registration form submit
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['check_username'])) {
-    $full_name = trim($_POST['fullName'] ?? '');
-    $username = trim($_POST['username'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $confirm_password = $_POST['confirmPassword'] ?? '';
+// ✅ Registration process
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !isset($_POST['check_username'])) {
+    $fullname        = trim($_POST["fullName"] ?? ''); // match HTML field
+    $username        = trim($_POST["username"] ?? '');
+    $password        = trim($_POST["password"] ?? '');
+    $confirmPassword = trim($_POST["confirmPassword"] ?? ''); // match HTML field
 
-    if (empty($full_name) || empty($username) || empty($password) || empty($confirm_password)) {
+    // Validation
+    if (empty($fullname) || empty($username) || empty($password) || empty($confirmPassword)) {
         $message = "All fields are required.";
-    } elseif ($password !== $confirm_password) {
+    } elseif ($password !== $confirmPassword) {
         $message = "Passwords do not match.";
     } else {
-        $stmt = $conn->prepare("SELECT user_id FROM users WHERE username = ?");
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $stmt->store_result();
+        // Check if username already exists
+        $check = $conn->prepare("SELECT username FROM users WHERE username = ?");
+        $check->bind_param("s", $username);
+        $check->execute();
+        $check->store_result();
 
-        if ($stmt->num_rows > 0) {
-            $message = "Username already taken.";
+        if ($check->num_rows > 0) {
+            $message = "Username already exists.";
         } else {
-            $password_hash = password_hash($password, PASSWORD_BCRYPT);
-            $role = "Resident";
-            $status = "Active";
+            $password_hash   = password_hash($password, PASSWORD_DEFAULT);
+            $role            = "Resident";  
+            $status          = "Active";
             $date_registered = date("Y-m-d H:i:s");
 
-            $insert = $conn->prepare("INSERT INTO users (full_name, username, password_hash, role, status, date_registered) VALUES (?, ?, ?, ?, ?, ?)");
-            $insert->bind_param("ssssss", $full_name, $username, $password_hash, $role, $status, $date_registered);
+          /** Generate new user_id **/
+$firstLetter = strtoupper(substr($fullname, 0, 1));
 
-            if ($insert->execute()) {
-                $user_id = $insert->insert_id;
+$result = $conn->query("SELECT user_id 
+                        FROM users 
+                        ORDER BY CAST(SUBSTRING(user_id, 2) AS UNSIGNED) DESC 
+                        LIMIT 1");
 
-                $action = "New user registered";
-                $log = $conn->prepare("INSERT INTO activity_logs (user_id, action, created_at) VALUES (?, ?, NOW())");
-                $log->bind_param("is", $user_id, $action);
-                $log->execute();
-                $log->close();
+if ($result && $row = $result->fetch_assoc()) {
+    $lastIdNum = (int)substr($row["user_id"], 2); 
+    $newIdNum  = $lastIdNum + 1;
+} else {
+    $newIdNum = 2; // 👈 first ever user starts at 2
+}
+
+$user_id = "U" . $firstLetter . str_pad($newIdNum, 6, "0", STR_PAD_LEFT);
+
+
+            /** Insert into users **/
+            $stmt = $conn->prepare("INSERT INTO users (user_id, fullname, username, password_hash, role, status, date_registered) 
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssssss", $user_id, $fullname, $username, $password_hash, $role, $status, $date_registered);
+
+            if ($stmt->execute()) {
+                $stmt->close();
+
+             /** Generate log_id **/
+$logRes = $conn->query("SELECT log_id FROM activity_logs 
+ORDER BY CAST(SUBSTRING(log_id, 4) AS UNSIGNED) DESC 
+LIMIT 1");
+
+if ($logRes && $logRow = $logRes->fetch_assoc()) {
+$lastLogNum = (int)substr($logRow["log_id"], 3); // skip 'LOG'
+$newLogNum  = $lastLogNum + 1;
+} else {
+$newLogNum = 2; // 👈 first log starts at 2
+}
+
+$log_id = "LOG" . str_pad($newLogNum, 6, "0", STR_PAD_LEFT);
+
+/** Insert into activity_logs **/
+$action     = "Resident $fullname registered an account";
+$created_at = date("Y-m-d H:i:s");
+
+$logStmt = $conn->prepare("INSERT INTO activity_logs (log_id, user_id, action, created_at) VALUES (?, ?, ?, ?)");
+$logStmt->bind_param("ssss", $log_id, $user_id, $action, $created_at);
+$logStmt->execute();
+$logStmt->close();
+
 
                 $message = "Registration successful!";
             } else {
-                $message = "An unexpected error occurred.";
+                $message = "Error: " . $stmt->error;
             }
-            $insert->close();
         }
-        $stmt->close();
+        $check->close();
     }
 }
 ?>
+
+
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -105,15 +156,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['check_username'])) {
 }
 
 
-/* Background image with blur */
 .container::before {
   content: "";
   position: absolute;
   inset: 0;
   background-size: cover;
-  filter: blur(5px); controls blur level
+  filter: blur(5px); /* ✅ removed "controls blur level" */
   z-index: 0;
 }
+
 
 /* Foreground content (form) */
 .container form,
@@ -281,10 +332,15 @@ h1 span {
     <p class="subtitle">Please create your account</p>
     <form id="registrationForm" method="POST" action="register.php" novalidate>
       <div class="form-group">
-        <label for="fullName">Name</label>
         <div class="input-container">
           <i class="fa-solid fa-user"></i>
-          <input type="text" id="fullName" name="fullName" placeholder="Enter your full name">
+          <label for="fullName">Full Name</label>
+<input type="text" id="fullName" name="fullName" placeholder="Enter your Full Name">
+<br>
+<small style="color: gray; font-size: 12px;">
+Format: First Name, Middle Name, Last Name, Suffix
+</small>
+
         </div>
         <div class="error-message" id="fullNameError">Full name must be at least 2 characters long</div>
       </div>
@@ -335,15 +391,14 @@ h1 span {
 <script>
 
 <?php if (!empty($message)) : ?>
-
 document.addEventListener("DOMContentLoaded", () => {
   alert("<?= $message ?>");
   <?php if ($message === "Registration successful!") : ?>
     window.location.href = "login.php";
   <?php endif; ?>
 });
-
 <?php endif; ?>
+
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('registrationForm');

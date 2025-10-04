@@ -8,74 +8,116 @@ header("Expires: 0");
 
 // Protect admin dashboard
 if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "Admin") {
-    // If not logged in or not an admin, redirect to login
-    header("Location: ../login.php"); // go up one folder
+    header("Location: ../login.php");
     exit;
 }
 
 require_once("../cons/config.php"); // DB connection
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-  $full_name        = trim($_POST["full_name"]);
-  $username         = trim($_POST["username"]);
-  $password         = trim($_POST["password"]);
-  $confirm_password = trim($_POST["confirm_password"]);
+    $fullname        = trim($_POST["fullname"]);
+    $username         = trim($_POST["username"]);
+    $password         = trim($_POST["password"]);
+    $confirm_password = trim($_POST["confirm_password"]);
+    $role             = trim($_POST["role"]); // Role from form input
 
-  // Default role to "Official"
-  $role = "Official"; 
+    if (empty($fullname) || empty($username) || empty($password) || empty($confirm_password) || empty($role)) {
+        die("All fields are required.");
+    }
 
-  if (empty($full_name) || empty($username) || empty($password) || empty($confirm_password)) {
-      die("All fields are required.");
-  }
+    if ($password !== $confirm_password) {
+        die("Passwords do not match.");
+    }
 
-  if ($password !== $confirm_password) {
-      die("Passwords do not match.");
-  }
+    // Hash password
+    $password_hash   = password_hash($password, PASSWORD_DEFAULT);
 
-  // Hash password
-  $password_hash   = password_hash($password, PASSWORD_DEFAULT);
-  
-  // Default status to "Approved"
-  $status          = "Approved";  
-  $date_registered = date("Y-m-d H:i:s");
+    // Status is always Active
+    $status          = "Active";  
+    $date_registered = date("Y-m-d H:i:s");
 
-  // Check if username already exists
-  $check = $conn->prepare("SELECT username FROM users WHERE username = ?");
-  $check->bind_param("s", $username);
-  $check->execute();
-  $check->store_result();
+    // Check if username already exists
+    $check = $conn->prepare("SELECT username FROM users WHERE username = ?");
+    $check->bind_param("s", $username);
+    $check->execute();
+    $check->store_result();
 
-  if ($check->num_rows > 0) {
-      $check->close();
-      die("Username already exists.");
-  }
-  $check->close();
+    if ($check->num_rows > 0) {
+        $check->close();
+        die("Username already exists.");
+    }
+    $check->close();
 
-  // Insert into users table
-  $stmt = $conn->prepare("INSERT INTO users (full_name, username, password_hash, role, status, date_registered) 
-                          VALUES (?, ?, ?, ?, ?, ?)");
-  $stmt->bind_param("ssssss", $full_name, $username, $password_hash, $role, $status, $date_registered);
+/** Generate new user_id **/
+$firstLetter = strtoupper(substr($fullname, 0, 1));
 
-  if ($stmt->execute()) {
-      $user_id = $stmt->insert_id;
-      $stmt->close();
+// Get last inserted ID for this initial
+$result = $conn->query("SELECT user_id 
+                        FROM users 
+                        WHERE user_id LIKE 'U{$firstLetter}%' 
+                        ORDER BY CAST(SUBSTRING(user_id, 3) AS UNSIGNED) DESC 
+                        LIMIT 1");
 
-      // Insert into activity_logs
-      $action     = "Created account for $full_name ($role)";
-      $created_at = date("Y-m-d H:i:s");
-      $logStmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, created_at) VALUES (?, ?, ?)");
-      $logStmt->bind_param("iss", $user_id, $action, $created_at);
-      $logStmt->execute();
-      $logStmt->close();
-
-      echo "<script>alert('Account created successfully!'); window.location.href='admin_dashboard.php';</script>";
-      exit;
-  } else {
-      die("Error: " . $stmt->error);
-  }
+if ($result && $row = $result->fetch_assoc()) {
+    // Extract numeric part (everything after "U" + first letter)
+    $lastIdNum = (int)substr($row["user_id"], 2);
+    $newIdNum  = $lastIdNum + 1;
+} else {
+    $newIdNum = 1; // start from 1 if no record exists
 }
 
+// Pad number up to 6 digits (supports up to 999,999 users per letter)
+$user_id = "U" . $firstLetter . str_pad($newIdNum, 6, "0", STR_PAD_LEFT);
+
+// Suppose you already validated username/password
+$stmt = $conn->prepare("SELECT user_id, fullname, role FROM users WHERE username = ? LIMIT 1");
+$stmt->bind_param("s", $username);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($row = $result->fetch_assoc()) {
+    // Store in session
+    $_SESSION["user_id"]   = $row["user_id"];
+    $_SESSION["fullname"]  = $row["fullname"];
+    $_SESSION["role"]      = $row["role"];
+
+}
+
+/** Insert into users **/
+$stmt = $conn->prepare("INSERT INTO users (user_id, fullname, username, password_hash, role, status, date_registered) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?)");
+$stmt->bind_param("sssssss", $user_id, $fullname, $username, $password_hash, $role, $status, $date_registered);
+
+if ($stmt->execute()) {
+    $stmt->close();
+
+
+        /** Generate log_id **/
+        $logRes = $conn->query("SELECT log_id FROM activity_logs WHERE log_id LIKE 'LOG%' ORDER BY log_id DESC LIMIT 1");
+        if ($logRes && $logRow = $logRes->fetch_assoc()) {
+            $lastLogNum = (int)substr($logRow["log_id"], 3);
+            $newLogNum = $lastLogNum + 1;
+        } else {
+            $newLogNum = 1;
+        }
+        $log_id = "LOG" . str_pad($newLogNum, 6, "0", STR_PAD_LEFT);
+
+        /** Insert into activity_logs **/
+        $action     = "Created account for $fullname ($role)";
+        $created_at = date("Y-m-d H:i:s");
+        $logStmt = $conn->prepare("INSERT INTO activity_logs (log_id, user_id, action, created_at) VALUES (?, ?, ?, ?)");
+        $logStmt->bind_param("ssss", $log_id, $user_id, $action, $created_at);
+        $logStmt->execute();
+        $logStmt->close();
+
+        echo "<script>alert('Account created successfully!'); window.location.href='admin_dashboard.php';</script>";
+        exit;
+    } else {
+        die("Error: " . $stmt->error);
+    }
+}
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -351,7 +393,12 @@ body {
           <i class="fa-solid fa-user-circle"></i>
           <span>
             <?php 
-              echo isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : "Guest"; 
+             if(isset($_SESSION["fullname"], $_SESSION["role"])) {
+              echo htmlspecialchars($_SESSION["fullname"]) . " / " . htmlspecialchars($_SESSION["role"]);
+          } else {
+              echo "Guest";
+          }
+          
             ?>
           </span>
         </div>
@@ -363,9 +410,9 @@ body {
       <form class="create-form" id="createForm" method="POST" action="create_officials.php">
       <h2>Create Personnel Account</h2>
 
-      <label for="full_name">Full Name</label>
+      <label for="fullname">Full Name</label>
       <div class="input-wrapper">
-        <input type="text" id="full_name" name="full_name" placeholder="Enter your full name">
+        <input type="text" id="fullname" name="fullname" placeholder="Enter your full name">
       </div>
 
       <label for="username">Username</label>
@@ -390,14 +437,6 @@ body {
         <select id="role" name="role">
           <option value="" disabled selected>-- Select Role --</option>
           <option value="Admin">Admin</option>
-          <option value="Senior Vet">Senior Vet</option>
-          <option value="Junior Vet">Junior Vet</option>
-          <option value="Head Nurse">Head Nurse</option>
-          <option value="Vet Nurse">Vet Nurse</option>
-          <option value="Head Groomer">Head Groomer</option>
-          <option value="Assistant Groomer">Assistant Groomer</option>
-          <option value="Technician">Technician</option>
-          <option value="Lab Assistant">Lab Assistant</option>
           <option value="Barangay Captain">Barangay Captain</option>
           <option value="Barangay Kagawad">Barangay Kagawad</option>
           <option value="Barangay Secretary">Barangay Secretary</option>
@@ -413,7 +452,7 @@ body {
   <!-- Validation + Show Password Script -->
   <script>
   document.getElementById("createForm").addEventListener("submit", function(event) {
-    const fullName = document.getElementById("full_name").value.trim();
+    const fullName = document.getElementById("fullname").value.trim();
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value.trim();
     const confirmPassword = document.getElementById("confirm_password").value.trim();

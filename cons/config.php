@@ -2,7 +2,7 @@
 $host = "localhost";
 $user = "root";
 $pass = "";
-$db   = "barangay_connect";
+$db   = "barangayconnect";
 
 // Create connection
 $conn = mysqli_connect($host, $user, $pass, $db);

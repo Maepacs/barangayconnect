@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 28, 2025 at 03:06 PM
+-- Generation Time: Oct 04, 2025 at 12:57 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -28,10 +28,10 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `activity_logs` (
-  `log_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `action` varchar(255) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `log_id` varchar(20) NOT NULL,
+  `user_id` varchar(20) NOT NULL,
+  `action` varchar(100) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -39,7 +39,7 @@ CREATE TABLE `activity_logs` (
 --
 
 INSERT INTO `activity_logs` (`log_id`, `user_id`, `action`, `created_at`) VALUES
-(1, 1, 'Created account for Administrator (Admin)', '2025-09-28 05:33:53');
+('LOG000001', 'UM000001', 'Created account for Mae Pacquiao (Admin)', '2025-10-02 04:25:47');
 
 -- --------------------------------------------------------
 
@@ -48,11 +48,11 @@ INSERT INTO `activity_logs` (`log_id`, `user_id`, `action`, `created_at`) VALUES
 --
 
 CREATE TABLE `barangay_officials` (
-  `official_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `official_id` varchar(20) NOT NULL,
+  `user_id` varchar(20) NOT NULL,
   `position` varchar(100) NOT NULL,
-  `term_start` date DEFAULT NULL,
-  `term_end` date DEFAULT NULL
+  `term_start` date NOT NULL,
+  `term_end` date NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -62,15 +62,15 @@ CREATE TABLE `barangay_officials` (
 --
 
 CREATE TABLE `complaints` (
-  `complaint_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `sms_id` int(11) DEFAULT NULL,
+  `complaint_id` varchar(20) NOT NULL,
+  `user_id` varchar(20) NOT NULL,
+  `complaint_title` varchar(100) NOT NULL,
   `complaint_type` varchar(100) NOT NULL,
-  `description` text DEFAULT NULL,
-  `image_file` varchar(255) DEFAULT NULL,
-  `date_filed` timestamp NOT NULL DEFAULT current_timestamp(),
-  `status` enum('Pending','In Progress','Resolved') DEFAULT 'Pending',
-  `handled_by` int(11) DEFAULT NULL
+  `description` text NOT NULL,
+  `image_file` varchar(100) NOT NULL,
+  `date_filed` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `status` enum('pending','in progress','resolved') NOT NULL,
+  `handled_by` varchar(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -80,14 +80,14 @@ CREATE TABLE `complaints` (
 --
 
 CREATE TABLE `document_request` (
-  `request_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `sms_id` int(11) DEFAULT NULL,
+  `request_id` varchar(20) NOT NULL,
+  `user_id` varchar(20) NOT NULL,
   `document_type` varchar(100) NOT NULL,
-  `purpose` varchar(255) DEFAULT NULL,
-  `date_requested` timestamp NOT NULL DEFAULT current_timestamp(),
-  `status` enum('Pending','Approved','Rejected','Released') DEFAULT 'Pending',
-  `processed_by` int(11) DEFAULT NULL
+  `purpose` varchar(100) NOT NULL,
+  `supporting_file` varchar(100) NOT NULL,
+  `status` enum('Approved','Rejected','Released') NOT NULL,
+  `processed_by` varchar(20) NOT NULL,
+  `date_requested` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -97,10 +97,11 @@ CREATE TABLE `document_request` (
 --
 
 CREATE TABLE `household` (
-  `household_id` int(11) NOT NULL,
-  `resident_id` int(11) NOT NULL,
-  `member_name` varchar(100) NOT NULL,
-  `relationship_to_head` varchar(50) DEFAULT NULL
+  `household_id` varchar(20) NOT NULL,
+  `resident_id` varchar(20) NOT NULL,
+  `relation_to_head` varchar(100) NOT NULL,
+  `household_type` enum('own','rental','government provided','shared') NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -110,13 +111,13 @@ CREATE TABLE `household` (
 --
 
 CREATE TABLE `password_resets` (
-  `reset_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `reset_id` varchar(20) NOT NULL,
+  `user_id` varchar(20) NOT NULL,
   `otp_code` varchar(10) NOT NULL,
   `otp_type` enum('SMS','Email') NOT NULL,
   `expiry_time` datetime NOT NULL,
-  `is_used` tinyint(1) DEFAULT 0,
-  `requested_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `is_used` tinyint(1) NOT NULL,
+  `requested_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -126,8 +127,8 @@ CREATE TABLE `password_resets` (
 --
 
 CREATE TABLE `residents_profile` (
-  `resident_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `resident_id` varchar(20) NOT NULL,
+  `user_id` varchar(20) NOT NULL,
   `first_name` varchar(50) NOT NULL,
   `middle_name` varchar(50) DEFAULT NULL,
   `last_name` varchar(50) NOT NULL,
@@ -162,14 +163,16 @@ CREATE TABLE `residents_profile` (
 --
 
 CREATE TABLE `sms_logs` (
-  `sms_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `phone_number` varchar(20) NOT NULL,
+  `sms_id` varchar(20) NOT NULL,
+  `user_id` varchar(20) NOT NULL,
+  `resident_id` varchar(20) NOT NULL,
+  `direction` enum('incoming','outgoing') NOT NULL,
+  `sender_number` varchar(20) NOT NULL,
+  `recipient_number` varchar(20) NOT NULL,
   `message` text NOT NULL,
   `status` enum('Sent','Failed','Pending') DEFAULT 'Pending',
-  `reference_type` enum('Complaint','Document Request','OTP','Password Reset') NOT NULL,
-  `reference_id` int(11) DEFAULT NULL,
-  `sent_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `sent_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -179,21 +182,21 @@ CREATE TABLE `sms_logs` (
 --
 
 CREATE TABLE `users` (
-  `user_id` int(11) NOT NULL,
-  `full_name` varchar(255) NOT NULL,
-  `username` varchar(50) NOT NULL,
-  `password_hash` varchar(255) NOT NULL,
-  `role` enum('Resident','Admin','Official') DEFAULT 'Resident',
-  `status` enum('Pending','Approved','Rejected') DEFAULT 'Pending',
-  `date_registered` timestamp NOT NULL DEFAULT current_timestamp()
+  `user_id` varchar(20) NOT NULL,
+  `fullname` varchar(100) NOT NULL,
+  `username` varchar(100) NOT NULL,
+  `password_hash` varchar(100) NOT NULL,
+  `role` enum('Admin','Official','Resident') NOT NULL,
+  `status` enum('active','inactive') NOT NULL,
+  `date_registered` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`user_id`, `full_name`, `username`, `password_hash`, `role`, `status`, `date_registered`) VALUES
-(1, 'Administrator', 'admin001', '$2y$10$9sy/0XFnluwGKFQxIGgIc.EYquV.6biI1gRfZniPrd5Jv5mSbgqqm', 'Admin', 'Approved', '2025-09-28 05:33:53');
+INSERT INTO `users` (`user_id`, `fullname`, `username`, `password_hash`, `role`, `status`, `date_registered`) VALUES
+('UM000001', 'Mae Pacquiao', 'meipacs', '$2y$10$VAhsxDQeRHjlluY2w9Uktu2BkOFEqPtt1FpSPahK5E8qUS61fsaSK', 'Admin', 'active', '2025-10-02 04:25:47');
 
 --
 -- Indexes for dumped tables
@@ -204,46 +207,44 @@ INSERT INTO `users` (`user_id`, `full_name`, `username`, `password_hash`, `role`
 --
 ALTER TABLE `activity_logs`
   ADD PRIMARY KEY (`log_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD UNIQUE KEY `user_id` (`user_id`);
 
 --
 -- Indexes for table `barangay_officials`
 --
 ALTER TABLE `barangay_officials`
   ADD PRIMARY KEY (`official_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD UNIQUE KEY `user_id` (`user_id`);
 
 --
 -- Indexes for table `complaints`
 --
 ALTER TABLE `complaints`
   ADD PRIMARY KEY (`complaint_id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `handled_by` (`handled_by`),
-  ADD KEY `sms_id` (`sms_id`);
+  ADD KEY `complaints_ibfk_1` (`user_id`),
+  ADD KEY `complaints_ibfk_2` (`handled_by`);
 
 --
 -- Indexes for table `document_request`
 --
 ALTER TABLE `document_request`
   ADD PRIMARY KEY (`request_id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `processed_by` (`processed_by`),
-  ADD KEY `sms_id` (`sms_id`);
+  ADD UNIQUE KEY `user_id` (`user_id`),
+  ADD UNIQUE KEY `processed_by` (`processed_by`);
 
 --
 -- Indexes for table `household`
 --
 ALTER TABLE `household`
   ADD PRIMARY KEY (`household_id`),
-  ADD KEY `resident_id` (`resident_id`);
+  ADD UNIQUE KEY `resident_id` (`resident_id`);
 
 --
 -- Indexes for table `password_resets`
 --
 ALTER TABLE `password_resets`
   ADD PRIMARY KEY (`reset_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD UNIQUE KEY `user_id` (`user_id`);
 
 --
 -- Indexes for table `residents_profile`
@@ -257,72 +258,14 @@ ALTER TABLE `residents_profile`
 --
 ALTER TABLE `sms_logs`
   ADD PRIMARY KEY (`sms_id`),
+  ADD UNIQUE KEY `resident_id` (`resident_id`),
   ADD KEY `user_id` (`user_id`);
 
 --
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
-  ADD PRIMARY KEY (`user_id`),
-  ADD UNIQUE KEY `username` (`username`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `activity_logs`
---
-ALTER TABLE `activity_logs`
-  MODIFY `log_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- AUTO_INCREMENT for table `barangay_officials`
---
-ALTER TABLE `barangay_officials`
-  MODIFY `official_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `complaints`
---
-ALTER TABLE `complaints`
-  MODIFY `complaint_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `document_request`
---
-ALTER TABLE `document_request`
-  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `household`
---
-ALTER TABLE `household`
-  MODIFY `household_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `password_resets`
---
-ALTER TABLE `password_resets`
-  MODIFY `reset_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `residents_profile`
---
-ALTER TABLE `residents_profile`
-  MODIFY `resident_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `sms_logs`
---
-ALTER TABLE `sms_logs`
-  MODIFY `sms_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `users`
---
-ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  ADD PRIMARY KEY (`user_id`);
 
 --
 -- Constraints for dumped tables
@@ -332,51 +275,52 @@ ALTER TABLE `users`
 -- Constraints for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  ADD CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
+  ADD CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `barangay_officials`
 --
 ALTER TABLE `barangay_officials`
-  ADD CONSTRAINT `barangay_officials_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
+  ADD CONSTRAINT `barangay_officials_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `complaints`
 --
 ALTER TABLE `complaints`
-  ADD CONSTRAINT `complaints_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
-  ADD CONSTRAINT `complaints_ibfk_2` FOREIGN KEY (`handled_by`) REFERENCES `users` (`user_id`);
+  ADD CONSTRAINT `complaints_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `complaints_ibfk_2` FOREIGN KEY (`handled_by`) REFERENCES `barangay_officials` (`official_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `document_request`
 --
 ALTER TABLE `document_request`
-  ADD CONSTRAINT `document_request_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
-  ADD CONSTRAINT `document_request_ibfk_2` FOREIGN KEY (`processed_by`) REFERENCES `users` (`user_id`);
+  ADD CONSTRAINT `doc_req_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `doc_req_ibfk_2` FOREIGN KEY (`processed_by`) REFERENCES `barangay_officials` (`official_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `household`
 --
 ALTER TABLE `household`
-  ADD CONSTRAINT `household_ibfk_1` FOREIGN KEY (`resident_id`) REFERENCES `residents_profile` (`resident_id`);
+  ADD CONSTRAINT `household_ibfk_1` FOREIGN KEY (`resident_id`) REFERENCES `residents_profile` (`resident_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `password_resets`
 --
 ALTER TABLE `password_resets`
-  ADD CONSTRAINT `password_resets_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
+  ADD CONSTRAINT `pass_res_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `residents_profile`
 --
 ALTER TABLE `residents_profile`
-  ADD CONSTRAINT `residents_profile_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
+  ADD CONSTRAINT `res_prof_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `sms_logs`
 --
 ALTER TABLE `sms_logs`
-  ADD CONSTRAINT `sms_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
+  ADD CONSTRAINT `sms_logs_ibfk_1` FOREIGN KEY (`resident_id`) REFERENCES `residents_profile` (`resident_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `sms_logs_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
