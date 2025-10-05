@@ -43,10 +43,10 @@ $complaintsResult = $stmt->get_result();
 $stmt->close();
 
 // ✅ Fetch document requests for this user
-$stmt = $conn->prepare("SELECT request_id, document_type, status, date_request 
+$stmt = $conn->prepare("SELECT request_id, document_type, status, date_requested
                         FROM document_request 
                         WHERE user_id = ? 
-                        ORDER BY date_request DESC");
+                        ORDER BY date_requested DESC");
 $stmt->bind_param("s", $user_id);
 $stmt->execute();
 $docRequestsResult = $stmt->get_result();

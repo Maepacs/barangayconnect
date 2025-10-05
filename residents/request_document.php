@@ -92,7 +92,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // Insert request
     $stmt = $conn->prepare("INSERT INTO document_request 
-        (request_id, user_id, document_type, purpose, supporting_file, status, date_request) 
+        (request_id, user_id, document_type, purpose, supporting_file, status, date_requested) 
         VALUES (?, ?, ?, ?, ?, 'Pending', ?)");
     $stmt->bind_param("ssssss", $newId, $user_id, $document, $purpose, $supporting_file, $date_request);
 

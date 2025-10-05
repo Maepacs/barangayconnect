@@ -41,12 +41,12 @@ $complaintsQuery = $conn->query("
 
 // Fetch latest document requests
 $docsQuery = $conn->query("
-    SELECT d.request_id, d.document_type, DATE_FORMAT(d.date_request, '%b %d, %Y') AS date_requested,
+    SELECT d.request_id, d.document_type, DATE_FORMAT(d.date_requested, '%b %d, %Y') AS date_requested,
            u.username AS sender
     FROM document_request d
     JOIN users u ON d.user_id = u.user_id
     WHERE d.status = 'Pending'
-    ORDER BY d.date_request DESC
+    ORDER BY d.date_requested DESC
 ");
 
 
@@ -387,7 +387,6 @@ $notifCount = count($notifications);
       <li><a href="complaints.php"><i class="fa-solid fa-comments"></i> Complaints</a></li>
       <li><a href="residents.php"><i class="fa-solid fa-users"></i> Residents</a></li>
       <li><a href="officials.php"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
-      <li><a href="create_officials.php"><i class="fas fa-user-plus"></i> Create Official Account</a></li>
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
       <li><a href="activity_logs.php"><i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
       <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>

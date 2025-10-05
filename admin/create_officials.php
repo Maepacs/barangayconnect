@@ -19,11 +19,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $username         = trim($_POST["username"]);
     $password         = trim($_POST["password"]);
     $confirm_password = trim($_POST["confirm_password"]);
-    $role             = trim($_POST["role"]); // Role from form input
+    $role = isset($_POST["role"]) && trim($_POST["role"]) !== "" ? trim($_POST["role"]) : "Official"; // Default role
 
-    if (empty($fullname) || empty($username) || empty($password) || empty($confirm_password) || empty($role)) {
-        die("All fields are required.");
-    }
+if (empty($fullname) || empty($username) || empty($password) || empty($confirm_password)) {
+    die("All fields are required.");
+}
 
     if ($password !== $confirm_password) {
         die("Passwords do not match.");
@@ -48,25 +48,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
     $check->close();
 
-/** Generate new user_id **/
+  /** Generate new user_id **/
 $firstLetter = strtoupper(substr($fullname, 0, 1));
 
-// Get last inserted ID for this initial
-$result = $conn->query("SELECT user_id 
-                        FROM users 
-                        WHERE user_id LIKE 'U{$firstLetter}%' 
-                        ORDER BY CAST(SUBSTRING(user_id, 3) AS UNSIGNED) DESC 
-                        LIMIT 1");
+// Get the latest numeric part globally (not per initial)
+$result = $conn->query("
+    SELECT user_id 
+    FROM users 
+    ORDER BY CAST(SUBSTRING(user_id, 3) AS UNSIGNED) DESC 
+    LIMIT 1
+");
 
 if ($result && $row = $result->fetch_assoc()) {
-    // Extract numeric part (everything after "U" + first letter)
+    // Extract numeric part (after the prefix "U" + first letter)
     $lastIdNum = (int)substr($row["user_id"], 2);
     $newIdNum  = $lastIdNum + 1;
 } else {
-    $newIdNum = 1; // start from 1 if no record exists
+    // If no users exist at all, start from 2 instead of 1
+    $newIdNum = 2;
 }
 
-// Pad number up to 6 digits (supports up to 999,999 users per letter)
+// Pad number to 6 digits
 $user_id = "U" . $firstLetter . str_pad($newIdNum, 6, "0", STR_PAD_LEFT);
 
 // Suppose you already validated username/password
@@ -361,7 +363,7 @@ body {
 <body>
   <!-- Sidebar -->
   <div class="sidebar">
-    <h2>Barangay Connect</h2><br>
+    <h2>Barangay Connect</h2><br> 
     <img src="../assets/images/bg_logo.png">
     <ul>
       <li><a href="admin_dashboard.php"><i class="fa-solid fa-gauge"></i> Dashboard</a></li>
@@ -369,7 +371,6 @@ body {
       <li><a href="complaints.php"><i class="fa-solid fa-comments"></i> Complaints</a></li>
       <li><a href="residents.php"><i class="fa-solid fa-users"></i> Residents</a></li>
       <li><a href="officials.php"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
-      <li><a href="create_officials.php" class="active"><i class="fas fa-user-plus"></i> Create Official Account</a></li>
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
       <li><a href="activity_logs.php"><i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
       <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>
@@ -434,14 +435,15 @@ body {
 
       <label for="role">Role</label>
       <div class="input-wrapper">
-        <select id="role" name="role">
-          <option value="" disabled selected>-- Select Role --</option>
-          <option value="Admin">Admin</option>
-          <option value="Barangay Captain">Barangay Captain</option>
-          <option value="Barangay Kagawad">Barangay Kagawad</option>
-          <option value="Barangay Secretary">Barangay Secretary</option>
-          <option value="Barangay Treasurer">Barangay Treasurer</option>
-        </select>
+      <select id="role" name="role">
+      <option value="Official" selected disabled>Choose Official Role</option>
+  <option value="Admin">Admin</option>
+  <option value="Barangay Captain">Barangay Captain</option>
+  <option value="Barangay Kagawad">Barangay Kagawad</option>
+  <option value="Barangay Secretary">Barangay Secretary</option>
+  <option value="Barangay Treasurer">Barangay Treasurer</option>
+</select>
+
       </div>
 
       <button type="submit">Create Account</button>
