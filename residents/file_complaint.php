@@ -23,28 +23,22 @@ $stmt->bind_result($fullname, $role);
 $stmt->fetch();
 $stmt->close();
 
-// Store in session
-$_SESSION["role"] = $role;
-$_SESSION["fullname"] = $fullname;
+// Ensure fullname and role are stored in session
+$_SESSION["fullname"] = $fullname ?? 'Unknown';
+$_SESSION["role"] = $role ?? 'Resident';
 
-// Escape output
-$role = htmlspecialchars($role);
-$fullname = htmlspecialchars($fullname);
-
-// Handle form submission
+// Handle complaint submission
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-
-    // Validate inputs
-    $complaint_title = isset($_POST["title"]) ? trim($_POST["title"]) : '';
-    $complaint_type  = isset($_POST["category"]) ? trim($_POST["category"]) : '';
-    $description     = isset($_POST["description"]) ? trim($_POST["description"]) : '';
+    $complaint_title = trim($_POST["title"] ?? '');
+    $complaint_type  = trim($_POST["category"] ?? '');
+    $description     = trim($_POST["description"] ?? '');
 
     if (empty($complaint_title) || empty($complaint_type) || empty($description)) {
         echo "<script>alert('Please fill all required fields.'); window.history.back();</script>";
         exit;
     }
 
-    // Handle image upload
+    // ✅ Handle image upload safely
     $image_file = null;
     if (!empty($_FILES["image"]["name"])) {
         $target_dir = "../uploads/complaints/";
@@ -55,22 +49,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $file_type = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
         $allowed_types = ["jpg", "jpeg", "png", "gif"];
 
-        if (in_array($file_type, $allowed_types)) {
-            if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-                $image_file = $file_name;
-            } else {
-                echo "<script>alert('Failed to upload image.'); window.history.back();</script>";
-                exit;
-            }
-        } else {
+        if (!in_array($file_type, $allowed_types)) {
             echo "<script>alert('Invalid image file type.'); window.history.back();</script>";
+            exit;
+        }
+
+        if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
+            $image_file = $file_name;
+        } else {
+            echo "<script>alert('Failed to upload image.'); window.history.back();</script>";
             exit;
         }
     }
 
-    // Generate complaint ID
+    // ✅ Generate complaint ID
     $query = $conn->query("SELECT complaint_id FROM complaints ORDER BY CAST(SUBSTRING(complaint_id, 2) AS UNSIGNED) DESC LIMIT 1");
-    if ($query->num_rows > 0) {
+    if ($query && $query->num_rows > 0) {
         $row = $query->fetch_assoc();
         $num = (int)substr($row['complaint_id'], 1);
         $newId = 'C' . str_pad($num + 1, 6, '0', STR_PAD_LEFT);
@@ -78,41 +72,46 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $newId = 'C000001';
     }
 
-    // Insert complaint
-    $stmt = $conn->prepare("INSERT INTO complaints (complaint_id, user_id, complaint_title, complaint_type, description, image_file, status) VALUES (?, ?, ?, ?, ?, ?, 'Pending')");
-    $stmt->bind_param("ssssss", $newId, $user_id, $complaint_title, $complaint_type, $description, $image_file);
+    $date_filed = date("Y-m-d H:i:s");
+    $handled_by = null;
+
+
+    // ✅ Insert complaint safely
+    $stmt = $conn->prepare("
+    INSERT INTO complaints 
+    (complaint_id, user_id, complaint_title, complaint_type, description, image_file, date_filed, status, handled_by) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', ?)
+");
+$stmt->bind_param("ssssssss", $newId, $user_id, $complaint_title, $complaint_type, $description, $image_file, $date_filed, $handled_by);
+
 
     if ($stmt->execute()) {
-
-        // Generate log ID
+        // ✅ Activity log ID
         $logRes = $conn->query("SELECT log_id FROM activity_logs ORDER BY CAST(SUBSTRING(log_id, 4) AS UNSIGNED) DESC LIMIT 1");
         if ($logRes && $logRes->num_rows > 0) {
-            $logRow = $logRes->fetch_assoc();
-            $newLogNum = (int)substr($logRow["log_id"], 3) + 1;
+            $row = $logRes->fetch_assoc();
+            $newLogNum = (int)substr($row['log_id'], 3) + 1;
         } else {
             $newLogNum = 1;
         }
+
         $log_id = "LOG" . str_pad($newLogNum, 6, "0", STR_PAD_LEFT);
         $action = "Resident $fullname filed a complaint (ID: $newId)";
         $created_at = date("Y-m-d H:i:s");
 
-        // Insert activity log
         $logStmt = $conn->prepare("INSERT INTO activity_logs (log_id, user_id, action, created_at) VALUES (?, ?, ?, ?)");
         $logStmt->bind_param("ssss", $log_id, $user_id, $action, $created_at);
         $logStmt->execute();
         $logStmt->close();
 
         echo "<script>alert('Complaint submitted successfully!'); window.location='file_complaint.php';</script>";
-
     } else {
-        echo "<script>alert('Error: " . $stmt->error . "'); window.history.back();</script>";
+        echo "<script>alert('Error submitting complaint: " . addslashes($stmt->error) . "'); window.history.back();</script>";
     }
 
     $stmt->close();
 }
 ?>
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -122,7 +121,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <link rel="icon" href="../assets/images/ghost.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    /* Global Styles */
+/* Global Styles */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -195,33 +194,32 @@ body {
     color: #fff;
 }
 
+/* Main Content */
 .main-content {
     position: fixed;
     top: 0;
-    left: 250px;       /* since you have sidebar = 250px */
+    left: 250px;
     right: 0;
     bottom: 0;
     display: flex;
     flex-direction: column;
-    background:rgba(52, 58, 64, 0.68);
+    background: rgba(52, 58, 64, 0.68);
     color: #fff;
     padding: 20px;
-    overflow-y: auto;  /* enable scrolling inside */
+    overflow-y: auto;
 }
 
 /* Header */
 .header {
-    position: sticky;     /* stays at top when scrolling */
+    position: sticky;
     top: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding-bottom: 15px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    z-index: 10;          /* make sure it's above content */
+    z-index: 10;
 }
-
-
 
 .header h1 {
     font-size: 22px;
@@ -353,7 +351,7 @@ body {
 .preview-container {
     display: flex;
     align-items: center;
-    gap: 15px; /* space between image and filename */
+    gap: 15px;
     margin-top: 10px;
 }
 
@@ -370,17 +368,16 @@ body {
     font-size: 14px;
     color: #555;
     font-weight: bold;
-    max-width: 200px;   /* limit width */
+    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-
   </style>
 </head>
 <body>
 
- <!-- Sidebar -->
+<!-- Sidebar -->
 <div class="sidebar">
   <h2>Barangay Connect</h2><br>
   <img src="../assets/images/bg_logo.png">
@@ -390,7 +387,7 @@ body {
     <li><a href="request_document.php"><i class="fa-solid fa-file-circle-plus"></i> Request a Document</a></li>
     <li><a href="transaction_history.php"><i class="fa-solid fa-receipt"></i> Transaction History</a></li>
     <li><a href="user_sms.php"><i class="fa-solid fa-sms"></i> SMS History</a></li>
-    <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>
+    <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Account Settings</a></li>
     <li><a href="../logout.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
   </ul>
 </div>
@@ -405,15 +402,17 @@ body {
         <span class="badge">3</span>
       </div>
       <div class="user">
-      <i class="fa-solid fa-user-circle"></i>
-  <span>
-    <?php 
-      echo isset($_SESSION["fullname"]) ? $_SESSION["fullname"] . " / " . $_SESSION["role"] : "Guest"; 
-    ?>
-  </span>
-</div>
+        <i class="fa-solid fa-user-circle"></i>
+        <span>
+          <?php 
+            echo isset($_SESSION["fullname"]) 
+              ? htmlspecialchars($_SESSION["fullname"]) . " / " . htmlspecialchars($_SESSION["role"]) 
+              : "Guest"; 
+          ?>
+        </span>
       </div>
-    </div> <!-- ✅ Closed header properly -->
+    </div>
+  </div>
 
   <!-- Complaint Form -->
   <div class="complaint-form">
@@ -434,21 +433,19 @@ body {
       <label for="description">Description</label>
       <textarea id="description" name="description" placeholder="Enter complaint details" required></textarea>
 
-      <!-- Styled File Upload -->
       <label class="custom-file-upload">
         <i class="fa-solid fa-upload"></i> Attach Image
         <input type="file" id="image" name="image" accept="image/*" onchange="previewImage(event)">
       </label>
 
-    <!-- Preview + Filename -->
-<div class="preview-container">
-  <img id="imagePreview" src="#" alt="Image Preview">
-  <span id="fileName" class="file-name" title=""></span>
-</div><br>
+      <div class="preview-container">
+        <img id="imagePreview" src="#" alt="Image Preview">
+        <span id="fileName" class="file-name" title=""></span>
+      </div><br>
+
       <button type="submit">Submit Complaint</button>
     </form>
   </div>
-
 </div>
 
 <script>
@@ -470,15 +467,11 @@ function previewImage(event) {
       }
       reader.readAsDataURL(file);
     } else {
-      preview.src = "../assets/images/file-icon.png"; // use your own default icon
-      preview.style.display = "block";
+      preview.style.display = "none";
     }
   }
 }
-
 </script>
-
-
 
 </body>
 </html>
