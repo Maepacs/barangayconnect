@@ -18,7 +18,7 @@ $user_id = $_SESSION["user_id"];
 
 // ✅ Fetch fullname and role from users table
 $stmt = $conn->prepare("SELECT fullname, role FROM users WHERE user_id = ?");
-$stmt->bind_param("s", $user_id); // user_id is string like UJ0001
+$stmt->bind_param("s", $user_id);
 $stmt->execute();
 $stmt->bind_result($fullname, $role);
 $stmt->fetch();
@@ -55,9 +55,15 @@ $stmt->close();
 // ✅ Count records AFTER fetching
 $complaintsCount   = ($complaintsResult)   ? $complaintsResult->num_rows   : 0;
 $docRequestsCount  = ($docRequestsResult)  ? $docRequestsResult->num_rows  : 0;
+
+// ✅ Tracking number generator (no DB column needed)
+function generateTrackingNumber($complaint_id) {
+    $prefix = "CMP"; // CMP = Complaint
+    $datePart = date("Ymd"); // current date
+    $hashPart = strtoupper(substr(md5($complaint_id), 0, 6)); // short unique hash
+    return "{$prefix}-{$datePart}-{$hashPart}";
+}
 ?>
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -311,11 +317,11 @@ $docRequestsCount  = ($docRequestsResult)  ? $docRequestsResult->num_rows  : 0;
     .status.approved { background: #27ae60; }
     .status.rejected { background: #e74c3c; }
 
-  </style>
+    </style>
 </head>
 <body>
 
- <!-- Sidebar -->
+<!-- Sidebar -->
 <div class="sidebar">
   <h2>Barangay Connect</h2><br>
   <img src="../assets/images/bg_logo.png">
@@ -341,100 +347,90 @@ $docRequestsCount  = ($docRequestsResult)  ? $docRequestsResult->num_rows  : 0;
         <span class="badge">3</span>
       </div>
       <div class="user">
-      <i class="fa-solid fa-user-circle"></i>
-  <span>
-    <?php 
-      echo isset($_SESSION["fullname"]) ? $_SESSION["fullname"] . " / " . $_SESSION["role"] : "Guest"; 
-    ?>
-  </span>
-</div>
+        <i class="fa-solid fa-user-circle"></i>
+        <span><?php echo $_SESSION["fullname"] . " / " . $_SESSION["role"]; ?></span>
       </div>
-    </div> <!-- ✅ Closed header properly -->
+    </div>
+  </div>
 
- <!-- Dashboard Cards -->
-<div class="cards">
-  <div class="card complaints">
-    <i class="fa-solid fa-comments"></i>
-    <h3><?php echo $complaintsCount; ?></h3>
-    <p>My Complaints</p>
+  <!-- Dashboard Cards -->
+  <div class="cards">
+    <div class="card complaints">
+      <i class="fa-solid fa-comments"></i>
+      <h3><?php echo $complaintsCount; ?></h3>
+      <p>My Complaints</p>
+    </div>
+    <div class="card documents">
+      <i class="fa-solid fa-file-lines"></i>
+      <h3><?php echo $docRequestsCount; ?></h3>
+      <p>My Document Requests</p>
+    </div>
   </div>
-  <div class="card documents">
-    <i class="fa-solid fa-file-lines"></i>
-    <h3><?php echo $docRequestsCount; ?></h3>
-    <p>My Document Requests</p>
-  </div>
-</div>
 
   <!-- History Tables -->
   <div class="history-tables">
-<!-- Complaint History Table -->
-<!-- Complaint History Table -->
-<div class="table-container">
-  <h3>Complaint History</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Complaint ID</th>
-        <th>Date</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      <?php if ($complaintsResult && $complaintsResult->num_rows > 0): ?>
-        <?php while ($row = $complaintsResult->fetch_assoc()): ?>
+
+    <!-- Complaint History Table -->
+    <div class="table-container">
+      <h3>Complaint History</h3>
+      <table>
+        <thead>
           <tr>
-            <td><?php echo htmlspecialchars($row['complaint_id']); ?></td>
-            <td><?php echo htmlspecialchars($row['filed_date']); ?></td>
-            <td>
-              <span class="status <?php echo strtolower($row['status']); ?>">
-                <?php echo htmlspecialchars($row['status']); ?>
-              </span>
-            </td>
+            <th>Tracking No.</th>
+            <th>Date Filed</th>
+            <th>Status</th>
           </tr>
-        <?php endwhile; ?>
-      <?php else: ?>
-        <tr>
-          <td colspan="3">No complaints found.</td>
-        </tr>
-      <?php endif; ?>
-    </tbody>
-  </table>
-</div>
+        </thead>
+        <tbody>
+          <?php if ($complaintsResult && $complaintsResult->num_rows > 0): ?>
+            <?php while ($row = $complaintsResult->fetch_assoc()): ?>
+              <tr>
+                <td><?php echo generateTrackingNumber($row['complaint_id']); ?></td>
+                <td><?php echo htmlspecialchars($row['filed_date']); ?></td>
+                <td>
+                  <span class="status <?php echo strtolower($row['status']); ?>">
+                    <?php echo htmlspecialchars($row['status']); ?>
+                  </span>
+                </td>
+              </tr>
+            <?php endwhile; ?>
+          <?php else: ?>
+            <tr><td colspan="3">No complaints found.</td></tr>
+          <?php endif; ?>
+        </tbody>
+      </table>
+    </div>
 
-<!-- Document Request History Table -->
-<div class="table-container">
-  <h3>Document Request History</h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Request ID</th>
-        <th>Document</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      <?php if ($docRequestsResult && $docRequestsResult->num_rows > 0): ?>
-        <?php while ($row = $docRequestsResult->fetch_assoc()): ?>
+    <!-- Document Request History Table -->
+    <div class="table-container">
+      <h3>Document Request History</h3>
+      <table>
+        <thead>
           <tr>
-            <td><?php echo htmlspecialchars($row["request_id"]); ?></td>
-            <td><?php echo htmlspecialchars($row["document_type"]); ?></td>
-            <td>
-              <span class="status <?php echo strtolower($row["status"]); ?>">
-                <?php echo htmlspecialchars($row["status"]); ?>
-              </span>
-            </td>
+            <th>Request ID</th>
+            <th>Document</th>
+            <th>Status</th>
           </tr>
-        <?php endwhile; ?>
-      <?php else: ?>
-        <tr>
-          <td colspan="3">No requests found.</td>
-        </tr>
-      <?php endif; ?>
-    </tbody>
-  </table>
-</div>
-
-
+        </thead>
+        <tbody>
+          <?php if ($docRequestsResult && $docRequestsResult->num_rows > 0): ?>
+            <?php while ($row = $docRequestsResult->fetch_assoc()): ?>
+              <tr>
+                <td><?php echo htmlspecialchars($row["request_id"]); ?></td>
+                <td><?php echo htmlspecialchars($row["document_type"]); ?></td>
+                <td>
+                  <span class="status <?php echo strtolower($row["status"]); ?>">
+                    <?php echo htmlspecialchars($row["status"]); ?>
+                  </span>
+                </td>
+              </tr>
+            <?php endwhile; ?>
+          <?php else: ?>
+            <tr><td colspan="3">No requests found.</td></tr>
+          <?php endif; ?>
+        </tbody>
+      </table>
+    </div>
 
     <!-- SMS History Table -->
     <div class="table-container">
@@ -464,7 +460,5 @@ $docRequestsCount  = ($docRequestsResult)  ? $docRequestsResult->num_rows  : 0;
 
   </div>
 </div>
-
-
 </body>
 </html>

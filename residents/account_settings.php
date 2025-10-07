@@ -36,7 +36,7 @@ $stmt->close();
 if (isset($_POST["save_account"])) {
     $fullname = trim($_POST["fullname"]);
     $username = trim($_POST["username"]);
-    $password = trim($_POST["password"]);
+    $password = trim($_POST["password_hash"]);
 
     if (!empty($password)) {
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);

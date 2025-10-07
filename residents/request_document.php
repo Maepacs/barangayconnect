@@ -29,6 +29,9 @@ $_SESSION["fullname"] = $fullname;
 $role = htmlspecialchars($role);
 $fullname = htmlspecialchars($fullname);
 
+// Variable to store tracking number after submission
+$submitted_tracking_number = null;
+
 // Handle form submission
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
@@ -40,7 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         exit;
     }
 
-    // 🔎 Check duplicate request
+    // Check duplicate request
     $check = $conn->prepare("SELECT request_id FROM document_request 
                              WHERE user_id = ? AND document_type = ? AND purpose = ? AND status = 'Pending'");
     $check->bind_param("sss", $user_id, $document, $purpose);
@@ -83,18 +86,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if ($query->num_rows > 0) {
         $row = $query->fetch_assoc();
         $num = (int)substr($row['request_id'], 1);
-        $newId = 'D' . str_pad($num + 1, 6, '0', STR_PAD_LEFT);
+        $newId = 'DOC' . str_pad($num + 1, 6, '0', STR_PAD_LEFT);
     } else {
-        $newId = 'D000001';
+        $newId = 'DOC000001';
     }
 
-    $date_request = date("Y-m-d H:i:s");
+    // ✅ Generate unique tracking number
+    $tracking_number = sprintf(
+      "DOC-%s-%04d-%s",
+      date("Ymd"),
+      rand(1000, 9999),
+      $user_id
+  );
 
+  $date_filed = date("Y-m-d H:i:s");
+  $handled_by = null;
     // Insert request
     $stmt = $conn->prepare("INSERT INTO document_request 
-        (request_id, user_id, document_type, purpose, supporting_file, status, date_requested) 
-        VALUES (?, ?, ?, ?, ?, 'Pending', ?)");
-    $stmt->bind_param("ssssss", $newId, $user_id, $document, $purpose, $supporting_file, $date_request);
+        (request_id, tracking_number, user_id, document_type, purpose, supporting_file, status, date_requested) 
+        VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?)");
+    $stmt->bind_param("sssssss", $newId, $tracking_number, $user_id, $document, $purpose, $supporting_file, $date_request);
 
     if ($stmt->execute()) {
         // Generate log ID
@@ -115,7 +126,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $logStmt->execute();
         $logStmt->close();
 
-        echo "<script>alert('Document request submitted successfully!'); window.location='request_document.php';</script>";
+        // Set variable to display tracking number in modal
+        $submitted_tracking_number = $tracking_number;
 
     } else {
         echo "<script>alert('Error saving request: " . addslashes($stmt->error) . "'); window.history.back();</script>";
@@ -124,8 +136,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $stmt->close();
 }
 ?>
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -405,10 +415,50 @@ body {
   max-width: 380px;
 }
 
+  /* Modal Styles */
+  .modal {
+      display: none; 
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+  background-color: #f5f5f5; /* light background for modal */
+  color: #000;               /* modal text black */
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 400px;
+  margin: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.modal-content button {
+  margin-top: 15px;
+  padding: 10px 20px;
+  background-color: #27ae60;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.modal-content button:hover {
+  background-color: #1e8449;
+}
 
   </style>
 </head>
 <body>
+
 
 <!-- Sidebar -->
 <div class="sidebar">
@@ -433,21 +483,18 @@ body {
       <div class="notification">
         <i class="fa-solid fa-bell"></i>
         <span class="badge">3</span>
-</div>
-        <div class="user">
-      <i class="fa-solid fa-user-circle"></i>
-  <span>
-    <?php 
-      echo isset($_SESSION["fullname"]) ? $_SESSION["fullname"] . " / " . $_SESSION["role"] : "Guest"; 
-    ?>
-  </span>
-</div>
       </div>
-    </div> <!-- ✅ Closed header properly -->
+      <div class="user">
+        <i class="fa-solid fa-user-circle"></i>
+        <span><?php echo isset($_SESSION["fullname"]) ? $_SESSION["fullname"] . " / " . $_SESSION["role"] : "Guest"; ?></span>
+      </div>
+    </div>
+  </div>
 
   <!-- Request Form -->
   <div class="request-form">
     <h2>New Document Request</h2>
+
     <form action="request_document.php" method="POST" enctype="multipart/form-data">
       <label for="document">Document Type</label>
       <select id="document" name="document" required>
@@ -462,22 +509,33 @@ body {
       <textarea id="purpose" name="purpose" placeholder="State the purpose of the document" required></textarea>
 
       <label class="custom-file-upload">
-  <i class="fa-solid fa-upload"></i> Attach Supporting File
-  <input type="file" id="supporting" name="supporting" accept="image/*,application/pdf" onchange="previewImage(event)">
-</label>
+        <i class="fa-solid fa-upload"></i> Attach Supporting File
+        <input type="file" id="supporting" name="supporting" accept="image/*,application/pdf" onchange="previewImage(event)">
+      </label>
 
-<!-- Preview + Filename -->
-<div class="preview-container">
-  <img id="imagePreview" src="#" alt="Image Preview">
-  <span id="fileName" class="file-name" title=""></span>
-</div><br>
+      <div class="preview-container">
+        <img id="imagePreview" src="#" alt="Image Preview">
+        <span id="fileName" class="file-name" title=""></span>
+      </div><br>
 
-<button type="submit">Submit Request</button>
-
-
+      <button type="submit">Submit Request</button>
     </form>
   </div>
 </div>
+
+<!-- Tracking Number Modal -->
+<?php if ($submitted_tracking_number): ?>
+  <div id="trackingModal" class="modal">
+  <div class="modal-content">
+    <h3>Request Submitted Successfully!</h3>
+    <p>Your Tracking Number:</p><br>
+    <span id="modalTrackingNumber" style="font-family: monospace; font-size: 20px; background:rgb(233, 233, 129); color: #000; padding: 5px 10px; border-radius: 4px;"><?php echo $submitted_tracking_number; ?></span>
+    <br>
+    <button id="copyBtn">Copy</button>
+  </div>
+</div>
+
+<?php endif; ?>
 
 <script>
 function previewImage(event) {
@@ -490,18 +548,14 @@ function previewImage(event) {
     const file = input.files[0];
     const ext = file.name.split('.').pop().toLowerCase();
 
-    // Show filename
     fileName.textContent = file.name;
     fileName.title = file.name;
 
-    // Show preview container
     previewContainer.style.display = 'flex';
 
     if (ext === 'pdf') {
-      // Hide image preview for PDFs
       preview.style.display = 'none';
     } else {
-      // Show image preview
       const reader = new FileReader();
       reader.onload = function(e) {
         preview.src = e.target.result;
@@ -512,8 +566,24 @@ function previewImage(event) {
   }
 }
 
-</script>
+// Show modal and handle copy
+document.addEventListener("DOMContentLoaded", function() {
+  const modal = document.getElementById('trackingModal');
+  if (modal) {
+    modal.style.display = "flex";
+    const copyBtn = document.getElementById('copyBtn');
+    const modalTracking = document.getElementById('modalTrackingNumber');
 
+    copyBtn.addEventListener('click', function() {
+      navigator.clipboard.writeText(modalTracking.textContent)
+        .then(() => {
+          alert('Tracking number copied!');
+          modal.style.display = 'none';
+        });
+    });
+  }
+});
+</script>
 
 </body>
 </html>

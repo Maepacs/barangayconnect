@@ -23,9 +23,11 @@ $stmt->bind_result($fullname, $role);
 $stmt->fetch();
 $stmt->close();
 
-// Ensure fullname and role are stored in session
 $_SESSION["fullname"] = $fullname ?? 'Unknown';
 $_SESSION["role"] = $role ?? 'Resident';
+
+// Variable to store tracking number for modal
+$submitted_tracking_number = null;
 
 // Handle complaint submission
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -38,7 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         exit;
     }
 
-    // ✅ Handle image upload safely
+    // Handle image upload
     $image_file = null;
     if (!empty($_FILES["image"]["name"])) {
         $target_dir = "../uploads/complaints/";
@@ -62,41 +64,49 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
     }
 
-    // ✅ Generate complaint ID
-    $query = $conn->query("SELECT complaint_id FROM complaints ORDER BY CAST(SUBSTRING(complaint_id, 2) AS UNSIGNED) DESC LIMIT 1");
+    // Generate new complaint ID
+    $query = $conn->query("SELECT complaint_id FROM complaints ORDER BY CAST(SUBSTRING(complaint_id, 4) AS UNSIGNED) DESC LIMIT 1");
     if ($query && $query->num_rows > 0) {
         $row = $query->fetch_assoc();
-        $num = (int)substr($row['complaint_id'], 1);
-        $newId = 'C' . str_pad($num + 1, 6, '0', STR_PAD_LEFT);
+        $num = (int)substr($row['complaint_id'], 3);
+        $newId = 'CMP' . str_pad($num + 1, 6, '0', STR_PAD_LEFT);
     } else {
-        $newId = 'C000001';
+        $newId = 'CMP000001';
     }
 
-    $date_filed = date("Y-m-d H:i:s");
-    $handled_by = null;
+// Generate unique tracking number
+do {
+    // Random 8-character alphanumeric string
+    $random_str = strtoupper(bin2hex(random_bytes(4))); // 8 chars
+    $tracking_number = "CMP-" . date("Ymd") . "-" . $random_str;
+
+    // Check if it already exists in database
+    $checkStmt = $conn->prepare("SELECT tracking_number FROM complaints WHERE tracking_number = ?");
+    $checkStmt->bind_param("s", $tracking_number);
+    $checkStmt->execute();
+    $checkStmt->store_result();
+    $exists = $checkStmt->num_rows > 0;
+    $checkStmt->close();
+} while ($exists);
 
 
-    // ✅ Insert complaint safely
+    // Insert complaint with tracking number
     $stmt = $conn->prepare("
-    INSERT INTO complaints 
-    (complaint_id, user_id, complaint_title, complaint_type, description, image_file, date_filed, status, handled_by) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', ?)
-");
-$stmt->bind_param("ssssssss", $newId, $user_id, $complaint_title, $complaint_type, $description, $image_file, $date_filed, $handled_by);
-
+        INSERT INTO complaints 
+        (complaint_id, user_id, complaint_title, complaint_type, description, image_file, date_filed, status, handled_by, tracking_number) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?)
+    ");
+    $stmt->bind_param("sssssssss", $newId, $user_id, $complaint_title, $complaint_type, $description, $image_file, $date_filed, $handled_by, $tracking_number);
 
     if ($stmt->execute()) {
-        // ✅ Activity log ID
+        // Log activity
         $logRes = $conn->query("SELECT log_id FROM activity_logs ORDER BY CAST(SUBSTRING(log_id, 4) AS UNSIGNED) DESC LIMIT 1");
-        if ($logRes && $logRes->num_rows > 0) {
-            $row = $logRes->fetch_assoc();
-            $newLogNum = (int)substr($row['log_id'], 3) + 1;
-        } else {
-            $newLogNum = 1;
-        }
+        $newLogNum = ($logRes && $logRes->num_rows > 0)
+            ? (int)substr($logRes->fetch_assoc()['log_id'], 3) + 1
+            : 1;
 
         $log_id = "LOG" . str_pad($newLogNum, 6, "0", STR_PAD_LEFT);
-        $action = "Resident $fullname filed a complaint (ID: $newId)";
+        $action = "Resident " . htmlspecialchars($fullname) . " filed a complaint (ID: $newId, Tracking No: $tracking_number)";
         $created_at = date("Y-m-d H:i:s");
 
         $logStmt = $conn->prepare("INSERT INTO activity_logs (log_id, user_id, action, created_at) VALUES (?, ?, ?, ?)");
@@ -104,23 +114,27 @@ $stmt->bind_param("ssssssss", $newId, $user_id, $complaint_title, $complaint_typ
         $logStmt->execute();
         $logStmt->close();
 
-        echo "<script>alert('Complaint submitted successfully!'); window.location='file_complaint.php';</script>";
+        // Set variable for modal
+        $submitted_tracking_number = $tracking_number;
     } else {
         echo "<script>alert('Error submitting complaint: " . addslashes($stmt->error) . "'); window.history.back();</script>";
+        exit;
     }
 
     $stmt->close();
 }
 ?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Barangay Connect | File Complaint</title>
-  <link rel="icon" href="../assets/images/ghost.png">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barangay Connect | File Complaint</title>
+<link rel="icon" href="../assets/images/ghost.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
 /* Global Styles */
 * {
     box-sizing: border-box;
@@ -373,6 +387,46 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* Modal Styles */
+.modal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    z-index: 999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: #f5f5f5;
+    color: #000;
+    padding: 30px;
+    border-radius: 12px;
+    text-align: center;
+    max-width: 400px;
+    width: 80%;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.modal-content button {
+    margin-top: 15px;
+    padding: 10px 20px;
+    background-color: #27ae60;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+}
+
+.modal-content button:hover {
+    background-color: #1e8449;
+}
+
   </style>
 </head>
 <body>
@@ -442,35 +496,69 @@ body {
         <img id="imagePreview" src="#" alt="Image Preview">
         <span id="fileName" class="file-name" title=""></span>
       </div><br>
-
       <button type="submit">Submit Complaint</button>
     </form>
   </div>
-</div>
+  <?php if ($submitted_tracking_number): ?>
+  <div id="trackingModal" class="modal">
+    <div class="modal-content">
+      <h3>Request Submitted Successfully!</h3>
+      <p>Your Tracking Number:</p><br>
+      <span id="modalTrackingNumber" style="font-family: monospace; font-size: 20px; background:rgb(233, 233, 129); color: #000; padding: 5px 10px; border-radius: 4px;"><?php echo $submitted_tracking_number; ?></span>
+      <br>
+      <button id="copyBtn">Copy</button>
+    </div>
+  </div>
+<?php endif; ?>
+
+
+
 
 <script>
 function previewImage(event) {
-  const input = event.target;
-  const preview = document.getElementById('imagePreview');
-  const fileName = document.getElementById('fileName');
-  
-  if (input.files && input.files[0]) {
-    const file = input.files[0];
-    fileName.textContent = file.name;
-    fileName.title = file.name;
+    const input = event.target;
+    const preview = document.getElementById('imagePreview');
+    const fileName = document.getElementById('fileName');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        fileName.textContent = file.name;
+        fileName.title = file.name;
 
-    if (file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        preview.src = e.target.result;
-        preview.style.display = "block";
-      }
-      reader.readAsDataURL(file);
-    } else {
-      preview.style.display = "none";
+        if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = "block";
+            }
+            reader.readAsDataURL(file);
+        } else {
+            preview.style.display = "none";
+        }
     }
-  }
 }
+
+// Modal copy functionality
+document.addEventListener("DOMContentLoaded", function() {
+    const modal = document.getElementById('trackingModal');
+    if (!modal) return;
+
+    modal.style.display = 'flex';
+    const copyBtn = document.getElementById('copyBtn');
+    const trackingNumber = document.getElementById('modalTrackingNumber');
+
+    copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(trackingNumber.textContent).then(() => {
+            alert('Tracking number copied!');
+            modal.style.display = 'none';
+        });
+    });
+
+    // Optional: Close modal if clicked outside content
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.style.display = 'none';
+    });
+});
 </script>
 
 </body>

@@ -390,6 +390,7 @@ $notifCount = count($notifications);
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
       <li><a href="activity_logs.php"><i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
       <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>
+      <li><a href="landing_page.php"><i class="fa-solid fa-house"></i> Landing Page View</a></li>
       <li><a href="../logout.php" onclick="return confirm('Are you sure you want to log out?');">
         <i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
     </ul>
