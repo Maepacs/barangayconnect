@@ -228,13 +228,15 @@ if ($result && $result->num_rows > 0) {
     <ul>
       <li><a href="admin_dashboard.php"><i class="fa-solid fa-gauge"></i> Dashboard</a></li>
       <li><a href="document_request.php"><i class="fa-solid fa-file-lines"></i> Document Requests</a></li>
-      <li><a href="complaints.php" class="active"><i class="fa-solid fa-comments"></i> Complaints</a></li>
+      <li><a href="complaints.php" class="active"> <i class="fa-solid fa-comments"></i> Complaints</a></li>
       <li><a href="residents.php"><i class="fa-solid fa-users"></i> Residents</a></li>
       <li><a href="officials.php"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
       <li><a href="activity_logs.php"><i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
       <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>
-      <li><a href="../logout.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+      <li><a href="landing_page.php"><i class="fa-solid fa-house"></i> Landing Page View</a></li>
+      <li><a href="../logout.php" onclick="return confirm('Are you sure you want to log out?');">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
     </ul>
   </div>
 
