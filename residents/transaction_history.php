@@ -251,7 +251,7 @@ body {
     <li><a href="request_document.php"><i class="fa-solid fa-file-circle-plus"></i> Request a Document</a></li>
     <li><a href="transaction_history.php" class="active"><i class="fa-solid fa-receipt"></i> Transaction History</a></li>
     <li><a href="user_sms.php"><i class="fa-solid fa-sms"></i> SMS History</a></li>
-    <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>
+    <li><a href="account_settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>
     <li><a href="../logout.php" onclick="return confirm('Are you sure you want to log out?');"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
   </ul>
 </div>

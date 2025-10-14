@@ -123,7 +123,7 @@ $logStmt->close();
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title> Barangay Connect | Register </title>
-  <link rel="icon" href="assets/images/ghost.png">
+  <link rel="icon" href="assets/images/BG_logo.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     * {
@@ -382,7 +382,8 @@ Format: First Name, Middle Name, Last Name, Suffix
       <button type="submit">Register</button>
 
       <div class="form-footer">
-        Already have an account? <a href="login.php">Sign in</a>
+        Already have an account? <a href="login.php">Sign in</a><br>
+        <a href="index.php">Home</a>
       </div>
     </form>
   </div>

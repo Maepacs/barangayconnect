@@ -19,7 +19,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $username         = trim($_POST["username"]);
     $password         = trim($_POST["password"]);
     $confirm_password = trim($_POST["confirm_password"]);
-    $role = isset($_POST["role"]) && trim($_POST["role"]) !== "" ? trim($_POST["role"]) : "Official"; // Default role
+    $role = "Official";
+
 
 if (empty($fullname) || empty($username) || empty($password) || empty($confirm_password)) {
     die("All fields are required.");
@@ -127,7 +128,7 @@ if ($stmt->execute()) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Barangay Connect | Settings</title>
-  <link rel="icon" href="../assets/images/ghost.png">
+  <link rel="icon" href="../assets/images/BG_logo.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
 * {
@@ -274,10 +275,11 @@ body {
 /* Form */
 .create-form {
   margin-top: 30px;
+  margin-left: 50px;
   background: rgba(255,255,255,0.08);
   padding: 25px;
   border-radius: 10px;
-  max-width: 600px;
+  max-width: 400px;
 }
 
 .create-form h2 {
@@ -304,12 +306,11 @@ body {
   border: none;
   border-radius: 6px;
   outline: none;
-  background: rgba(146, 220, 237, 0.1);
-  color: #fff;
+  background: #ccc(146, 220, 237, 0.1);
 }
 
 .input-wrapper input::placeholder {
-  color: #ccc;
+  color: #000000;
 }
 
 .input-wrapper .toggle-password {
@@ -318,7 +319,7 @@ body {
   right: 12px;
   transform: translateY(-50%);
   cursor: pointer;
-  color: #ccc;
+  color: #000000;
   font-size: 16px;
 }
 .input-wrapper select {
@@ -326,8 +327,7 @@ body {
   padding: 10px 12px;
   border: none;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  background: :#ccc(146, 220, 237, 0.1);
   font-size: 15px;
   cursor: pointer;
   appearance: none;
@@ -335,12 +335,12 @@ body {
 
 .input-wrapper select:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.25);
+  background: :#ccc(146, 220, 237, 0.1);
 }
 
 .input-wrapper option {
-  background: #343A40; /* dark dropdown background */
-  color: #fff;
+  background:rgba(52, 58, 64, 0.5); /* dark dropdown background */
+  color: #ccc(146, 220, 237, 0.1);
 }
 
 
@@ -370,7 +370,7 @@ body {
       <li><a href="document_request.php"><i class="fa-solid fa-file-lines"></i> Document Requests</a></li>
       <li><a href="complaints.php"><i class="fa-solid fa-comments"></i> Complaints</a></li>
       <li><a href="residents.php"><i class="fa-solid fa-users"></i> Residents</a></li>
-      <li><a href="officials.php"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
+      <li><a href="officials.php" class="active"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
       <li><a href="activity_logs.php"><i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
       <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>
@@ -414,6 +414,9 @@ body {
       <label for="fullname">Full Name</label>
       <div class="input-wrapper">
         <input type="text" id="fullname" name="fullname" placeholder="Enter your full name">
+        <small style="color: white; font-size: 12px;">
+Format: First Name, Middle Name, Last Name, Suffix
+</small>
       </div>
 
       <label for="username">Username</label>

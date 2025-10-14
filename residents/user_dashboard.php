@@ -33,7 +33,7 @@ $role = htmlspecialchars($role);
 $fullname = htmlspecialchars($fullname);
 
 // ✅ Fetch complaints for this user
-$stmt = $conn->prepare("SELECT complaint_id, DATE(date_filed) AS filed_date, status 
+$stmt = $conn->prepare("SELECT complaint_type, tracking_number, status 
                         FROM complaints 
                         WHERE user_id = ? 
                         ORDER BY date_filed DESC");
@@ -43,7 +43,7 @@ $complaintsResult = $stmt->get_result();
 $stmt->close();
 
 // ✅ Fetch document requests for this user
-$stmt = $conn->prepare("SELECT request_id, document_type, status, date_requested
+$stmt = $conn->prepare("SELECT tracking_number, document_type, status, date_requested
                         FROM document_request 
                         WHERE user_id = ? 
                         ORDER BY date_requested DESC");
@@ -141,9 +141,10 @@ function generateTrackingNumber($complaint_id) {
         margin-right: 10px;
     }
 
-    .sidebar ul li a:hover {
-        background: #4a90e2;
-        color: #fff;
+    .sidebar ul li a:hover,
+    .sidebar ul li a.active {
+      background: #4a90e2;
+      color: #fff;
     }
 
     /* Main Content */
@@ -376,8 +377,8 @@ function generateTrackingNumber($complaint_id) {
       <table>
         <thead>
           <tr>
+            <th>Complaint Type</th>
             <th>Tracking No.</th>
-            <th>Date Filed</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -385,8 +386,8 @@ function generateTrackingNumber($complaint_id) {
           <?php if ($complaintsResult && $complaintsResult->num_rows > 0): ?>
             <?php while ($row = $complaintsResult->fetch_assoc()): ?>
               <tr>
-                <td><?php echo generateTrackingNumber($row['complaint_id']); ?></td>
-                <td><?php echo htmlspecialchars($row['filed_date']); ?></td>
+              <td><?php echo htmlspecialchars($row["complaint_type"]); ?></td>
+                <td><?php echo htmlspecialchars($row['tracking_number']); ?></td>
                 <td>
                   <span class="status <?php echo strtolower($row['status']); ?>">
                     <?php echo htmlspecialchars($row['status']); ?>
@@ -406,9 +407,9 @@ function generateTrackingNumber($complaint_id) {
       <h3>Document Request History</h3>
       <table>
         <thead>
-          <tr>
-            <th>Request ID</th>
+          <tr>           
             <th>Document</th>
+            <th>Tracking No.</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -416,8 +417,8 @@ function generateTrackingNumber($complaint_id) {
           <?php if ($docRequestsResult && $docRequestsResult->num_rows > 0): ?>
             <?php while ($row = $docRequestsResult->fetch_assoc()): ?>
               <tr>
-                <td><?php echo htmlspecialchars($row["request_id"]); ?></td>
                 <td><?php echo htmlspecialchars($row["document_type"]); ?></td>
+                <td><?php echo htmlspecialchars($row["tracking_number"]); ?></td>
                 <td>
                   <span class="status <?php echo strtolower($row["status"]); ?>">
                     <?php echo htmlspecialchars($row["status"]); ?>
@@ -432,7 +433,7 @@ function generateTrackingNumber($complaint_id) {
       </table>
     </div>
 
-    <!-- SMS History Table -->
+    <!-- SMS History Table
     <div class="table-container">
       <h3>SMS History</h3>
       <table>
@@ -456,7 +457,7 @@ function generateTrackingNumber($complaint_id) {
           </tr>
         </tbody>
       </table>
-    </div>
+    </div> -->
 
   </div>
 </div>

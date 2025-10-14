@@ -451,8 +451,274 @@ session_start();
   }
 }
 
+/* org-chart CSS */
+.org-chart-section {
+  text-align: center;
+  padding: 30px;
+  background: #f9fafb;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin: 40px 0;
+}
 
+.org-chart-section h2 {
+  font-size: 2rem;
+  margin-bottom: 30px;
+  color: #333;
+}
 
+.org-tree {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+/* Levels */
+.tree-level {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 40px;
+  position: relative;
+  margin: 20px 0;
+}
+
+/* Vertical connector line between levels */
+.tree-branch {
+  width: 2px;
+  height: 40px;
+  background: #333;
+  margin: 0 auto;
+}
+
+/* Horizontal connectors between cards */
+.tree-level.sub-level::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: #333;
+  z-index: 1;
+}
+
+/* Official cards */
+.official-card {
+  background: white;
+  border-radius: 10px;
+  width: 160px;
+  padding: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+  position: relative;
+  z-index: 2;
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+}
+
+.official-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 12px rgba(0,0,0,0.2);
+}
+
+.official-card img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.official-card h3,
+.official-card p {
+  margin: 5px 0;
+  color: #333;
+}
+
+.official-card [contenteditable="true"]:focus {
+  outline: 2px solid #007bff;
+  background: #eef6ff;
+  border-radius: 5px;
+}
+
+/* 🧭 Distinct Level Styling */
+.level-1 .official-card {
+  background: #e3f2fd; /* Light blue - Captain */
+  border-top: 4px solid #2196f3;
+}
+
+.level-2 .official-card {
+  background: #e8f5e9; /* Light green - Secretary & Treasurer */
+  border-top: 4px solid #4caf50;
+}
+
+.level-3 .official-card {
+  background: #fff8e1; /* Light yellow - Kagawads */
+  border-top: 4px solid #ffb300;
+}
+
+.level-4 .official-card {
+  background: #f3e5f5; /* Light purple - Others */
+  border-top: 4px solid #9c27b0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .official-card {
+    width: 130px;
+  }
+
+  .official-card img {
+    height: 130px;
+  }
+
+  .tree-level {
+    gap: 20px;
+  }
+}
+
+/* Delete button */
+.delete-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9em;
+  margin-top: 4px;
+}
+
+.delete-btn:hover {
+  background: #b02a37;
+}
+
+/* Upload form */
+.upload-form {
+  margin-top: 40px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.upload-form input,
+.upload-form select {
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.upload-form button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.upload-form button:hover {
+  background: #0056b3;
+}
+
+/* ===== Modal Styles (Added) ===== */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 20;
+  padding-top: 100px;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+  background-color: #fff;
+  margin: auto;
+  padding: 25px;
+  border-radius: 10px;
+  width: 320px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  animation: fadeIn 0.3s ease-in-out;
+  text-align: left;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  color: #333;
+  text-align: center;
+}
+
+.close {
+  float: right;
+  font-size: 24px;
+  cursor: pointer;
+  color: #555;
+  transition: color 0.2s;
+}
+
+.close:hover {
+  color: #000;
+}
+
+.modal-content input,
+.modal-content select {
+  width: 100%;
+  margin: 8px 0;
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.modal-content button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  margin-top: 10px;
+  cursor: pointer;
+  background: #ffc107;
+  color: #000;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+
+.modal-content button:hover {
+  background: #e0a800;
+}
+
+/* Preview photo inside modal */
+#edit_photo_preview {
+  display: block;
+  margin: 10px auto;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.success-message {
+  text-align: center;
+  color: #28a745;
+  background: #e9f9ee;
+  border: 1px solid #b8e6c1;
+  padding: 10px 15px;
+  border-radius: 6px;
+  margin-top: 15px;
+  font-weight: 500;
+  display: inline-block;
+}
 
 
     /* About Section */
@@ -761,6 +1027,195 @@ session_start();
   </form>
 </section>
 
+<!-- Barangay Organizational Chart Section -->
+<section class="org-chart-section">
+  <h2>Barangay Organizational Chart</h2>
+
+  <div class="org-tree">
+    <?php
+    $org_dir = '../uploads/orgchart/';
+    $org_members_file = '../data/org_members.json';
+    $org_members = file_exists($org_members_file) ? json_decode(file_get_contents($org_members_file), true) : [];
+
+    if (!empty($org_members)) {
+      // Define position groups
+      $positions = [
+        "Barangay Captain" => [],
+        "Barangay Secretary" => [],
+        "Barangay Treasurer" => [],
+        "Kagawad - Peace & Order" => [],
+        "Kagawad - Health & Sanitation" => [],
+        "Kagawad - Education" => [],
+        "Kagawad - Infrastructure" => [],
+        "Kagawad - Livelihood" => [],
+        "Kagawad - Youth & Sports" => [],
+        "SK Chairman" => [],
+        "Barangay Tanod" => [],
+        "Barangay Health Worker" => [],
+        "Barangay Clerk" => [],
+        "Barangay Utility Worker" => []
+      ];
+
+      // Sort members into their positions
+      foreach ($org_members as $member) {
+        if (isset($positions[$member['position']])) {
+          $positions[$member['position']][] = $member;
+        }
+      }
+
+      // ✅ LEVEL 1: Barangay Captain
+      echo '<div class="tree-level level-1">';
+      foreach ($positions["Barangay Captain"] as $captain) {
+        echo '
+          <div class="official-card" onclick="openEditModal(\'' . htmlspecialchars($captain['name']) . '\', \'' . htmlspecialchars($captain['position']) . '\', \'' . $org_dir . htmlspecialchars($captain['photo']) . '\')">
+            <img src="' . $org_dir . htmlspecialchars($captain['photo']) . '" alt="Barangay Captain">
+            <h3>' . htmlspecialchars($captain['name']) . '</h3>
+            <p>' . htmlspecialchars($captain['position']) . '</p>
+          </div>';
+      }
+      echo '</div>';
+
+      echo '<div class="tree-branch"></div>';
+
+      // ✅ LEVEL 2: Secretary & Treasurer
+      echo '<div class="tree-level level-2">';
+      foreach (["Barangay Secretary", "Barangay Treasurer"] as $key) {
+        foreach ($positions[$key] as $m) {
+          echo '
+            <div class="official-card" onclick="openEditModal(\'' . htmlspecialchars($m['name']) . '\', \'' . htmlspecialchars($m['position']) . '\', \'' . $org_dir . htmlspecialchars($m['photo']) . '\')">
+              <img src="' . $org_dir . htmlspecialchars($m['photo']) . '" alt="' . htmlspecialchars($m['position']) . '">
+              <h3>' . htmlspecialchars($m['name']) . '</h3>
+              <p>' . htmlspecialchars($m['position']) . '</p>
+            </div>';
+        }
+      }
+      echo '</div>';
+
+      echo '<div class="tree-branch"></div>';
+
+      // ✅ LEVEL 3: Kagawads
+      echo '<div class="tree-level level-3">';
+      foreach ($positions as $pos => $members) {
+        if (str_starts_with($pos, "Kagawad")) {
+          foreach ($members as $m) {
+            echo '
+              <div class="official-card" onclick="openEditModal(\'' . htmlspecialchars($m['name']) . '\', \'' . htmlspecialchars($m['position']) . '\', \'' . $org_dir . htmlspecialchars($m['photo']) . '\')">
+                <img src="' . $org_dir . htmlspecialchars($m['photo']) . '" alt="' . htmlspecialchars($m['position']) . '">
+                <h3>' . htmlspecialchars($m['name']) . '</h3>
+                <p>' . htmlspecialchars($m['position']) . '</p>
+              </div>';
+          }
+        }
+      }
+      echo '</div>';
+
+      echo '<div class="tree-branch"></div>';
+
+      // ✅ LEVEL 4: The rest (SK, Tanod, Health Worker, etc.)
+      echo '<div class="tree-level level-4">';
+      foreach ($positions as $pos => $members) {
+        if (
+          !in_array($pos, [
+            "Barangay Captain",
+            "Barangay Secretary",
+            "Barangay Treasurer"
+          ]) &&
+          !str_starts_with($pos, "Kagawad")
+        ) {
+          foreach ($members as $m) {
+            echo '
+              <div class="official-card" onclick="openEditModal(\'' . htmlspecialchars($m['name']) . '\', \'' . htmlspecialchars($m['position']) . '\', \'' . $org_dir . htmlspecialchars($m['photo']) . '\')">
+                <img src="' . $org_dir . htmlspecialchars($m['photo']) . '" alt="' . htmlspecialchars($m['position']) . '">
+                <h3>' . htmlspecialchars($m['name']) . '</h3>
+                <p>' . htmlspecialchars($m['position']) . '</p>
+              </div>';
+          }
+        }
+      }
+      echo '</div>';
+
+    } else {
+      echo "<p>No members added yet.</p>";
+    }
+    ?>
+  </div>
+</section>
+
+
+
+  <!-- Upload Form (for admin) -->
+  <form action="upload_member.php" method="POST" enctype="multipart/form-data" class="upload-form">
+    <input type="file" name="photo" accept="image/*" required>
+    <input type="text" name="name" placeholder="Full Name" required>
+
+    <select name="position" required>
+      <option value="" disabled selected>Select Position</option>
+      <option value="Barangay Captain">Barangay Captain</option>
+      <option value="Barangay Secretary">Barangay Secretary</option>
+      <option value="Barangay Treasurer">Barangay Treasurer</option>
+      <option value="Kagawad - Peace & Order">Kagawad - Peace & Order</option>
+      <option value="Kagawad - Health & Sanitation">Kagawad - Health & Sanitation</option>
+      <option value="Kagawad - Education">Kagawad - Education</option>
+      <option value="Kagawad - Infrastructure">Kagawad - Infrastructure</option>
+      <option value="SK Chairman">SK Chairman</option>
+      <option value="Barangay Tanod">Barangay Tanod</option>
+      <option value="Barangay Health Worker">Barangay Health Worker</option>
+    </select>
+
+    <button type="submit">Upload Member</button>
+  </form>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeEditModal()">&times;</span>
+      <h3>Edit Member</h3>
+      <form action="edit_member.php" method="POST" enctype="multipart/form-data">
+        <input type="hidden" id="edit_name" name="edit_name">
+        <img id="edit_photo_preview" src="" alt="Preview" style="width:80px; border-radius:8px; margin-bottom:10px;">
+        <input type="text" id="new_name" name="new_name" placeholder="New Name (optional)">
+        
+        <select name="new_position" id="new_position">
+          <option value="" disabled selected>Change Position (optional)</option>
+          <option value="Barangay Captain">Barangay Captain</option>
+          <option value="Barangay Secretary">Barangay Secretary</option>
+          <option value="Barangay Treasurer">Barangay Treasurer</option>
+          <option value="Kagawad - Peace & Order">Kagawad - Peace & Order</option>
+          <option value="Kagawad - Health & Sanitation">Kagawad - Health & Sanitation</option>
+          <option value="Kagawad - Education">Kagawad - Education</option>
+          <option value="Kagawad - Infrastructure">Kagawad - Infrastructure</option>
+          <option value="SK Chairman">SK Chairman</option>
+          <option value="Barangay Tanod">Barangay Tanod</option>
+          <option value="Barangay Health Worker">Barangay Health Worker</option>
+        </select>
+
+        <input type="file" name="new_photo" accept="image/*" onchange="previewNewPhoto(event)">
+        <button type="submit" style="background:#ffc107; color:#000;">Update</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- Delete Member Form -->
+<form action="delete_member.php" method="POST" class="contact-form">
+  <select name="delete_name" required>
+    <option value="" disabled selected>Select member to delete</option>
+    <?php
+    $org_members_file = '../data/org_members.json';
+    if (file_exists($org_members_file)) {
+      $org_members = json_decode(file_get_contents($org_members_file), true);
+      if (!empty($org_members)) {
+        foreach ($org_members as $member) {
+          echo '<option value="' . htmlspecialchars($member['name']) . '">' . htmlspecialchars($member['name']) . '</option>';
+        }
+      }
+    }
+    ?>
+  </select>
+  <button type="submit"><i class="fa-solid fa-trash"></i> Delete</button>
+</form>
+
+
 
 <br>
 
@@ -773,6 +1228,10 @@ session_start();
       notifications, it brings the community closer together while reducing paperwork and delays.
     </p>
   </section>
+
+
+
+
 
 
 
@@ -892,5 +1351,43 @@ document.getElementById('delete-hotline-form').addEventListener('submit', functi
 
 // Initial load
 loadHotlines();
+
+function openEditModal(name, position, photo) {
+  document.getElementById('editModal').style.display = 'block';
+  document.getElementById('edit_name').value = name;
+  document.getElementById('new_name').value = name;
+  document.getElementById('new_position').value = position;
+  document.getElementById('edit_photo_preview').src = photo;
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+function previewNewPhoto(event) {
+  const reader = new FileReader();
+  reader.onload = function(){
+    document.getElementById('edit_photo_preview').src = reader.result;
+  };
+  reader.readAsDataURL(event.target.files[0]);
+}
+
+// Close modal on outside click
+window.onclick = function(event) {
+  if (event.target == document.getElementById('editModal')) {
+    closeEditModal();
+  }
+}
+
+  // Automatically fade out the success message after 3 seconds
+  setTimeout(() => {
+    const msg = document.querySelector('.success-message');
+    if (msg) {
+      msg.style.transition = 'opacity 0.5s ease';
+      msg.style.opacity = '0';
+      setTimeout(() => msg.remove(), 500);
+    }
+  }, 3000);
+  
 </script>
 </html>

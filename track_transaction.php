@@ -74,7 +74,7 @@ if ($tracking_number) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Barangay Connect | Track Request</title>
-  <link rel="icon" href="assets/images/ghost_logo.png">
+  <link rel="icon" href="assets/images/BG_logo.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;   background: url("assets/images/bg.png") no-repeat center center; margin:0; display:flex; flex-direction:column; min-height:100vh;}
@@ -263,23 +263,17 @@ if ($tracking_number) {
   </div>
   </section>
 
-  <footer>
-    <div class="footer-logos">
-      <div class="logo-item">
-        <img src="assets/images/BG_logo.png" alt="Barangay Logo">
-        <small>Barangay Connect</small>
-      </div>
-      <div class="logo-item">
-        <img src="assets/images/csab.png" alt="College Logo">
-        <small>Colegio San Agustin - Bacolod</small>
-      </div>
-      <div class="logo-item">
-        <img src="assets/images/ghost_logo.png" alt="Designer Logo">
-        <small>BSIT - Ghost Team </small>
-      </div>
-    </div>
-    <div class="footer-year">&copy; <?= date('Y'); ?></div>
-  </footer>
+<!-- Footer -->
+<footer>
+  <div class="footer-logos">
+     
+  <div class="logo-item"><img src="assets/images/csab.png" alt="College Logo"><small>Colegio San Agustin - Bacolod</small></div>
+    <div class="logo-item"><img src="assets/images/BG_logo.png" alt="Barangay Logo"><small>Barangay Connect</small></div>
+    <div class="logo-item"><img src="assets/images/ghost_logo.png" alt="Designer Logo"><small>Ghost Team</small></div>
+    <div class="logo-item"><img src="assets/images/CABECS.png" alt="College Logo"><small>CABECS</small></div>
+  </div>
+  <div class="footer-year">&copy; <?php echo date('Y'); ?> | BSIT 4A </div>
+</footer>
 
 
   </body>

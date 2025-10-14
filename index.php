@@ -151,6 +151,173 @@ session_start();
   font-size: 1rem;
 }
 
+/* org-chart css */
+/* Barangay Organizational Chart (Landing Page Style) */
+.org-chart-section {
+  text-align: center;
+  padding: 30px;
+  background: #f9fafb;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin: 40px 0;
+}
+
+.org-chart-section h2 {
+  font-size: 2rem;
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.org-tree {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+/* ================================
+   Levels (Each row in the chart)
+================================ */
+.tree-level {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 40px;
+  position: relative;
+  margin: 20px 0;
+}
+
+/* Vertical connecting line between levels */
+.tree-branch {
+  width: 2px;
+  height: 40px;
+  background: #333;
+  margin: 0 auto;
+}
+
+/* Horizontal connectors between cards */
+.tree-level::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: #333;
+  z-index: 1;
+  display: none;
+}
+
+/* Show horizontal line only for levels with multiple cards */
+.tree-level:not(:first-child)::before {
+  display: block;
+}
+
+/* ================================
+   Official cards
+================================ */
+.official-card {
+  background: white;
+  border-radius: 10px;
+  width: 160px;
+  padding: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+  position: relative;
+  z-index: 2;
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+}
+
+.official-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 12px rgba(0,0,0,0.2);
+}
+
+.official-card img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.official-card h3,
+.official-card p {
+  margin: 5px 0;
+  color: #333;
+}
+
+/* Optional (for editable version, safe to keep) */
+.official-card [contenteditable="true"]:focus {
+  outline: 2px solid #007bff;
+  background: #eef6ff;
+  border-radius: 5px;
+}
+
+/* ================================
+   Distinct Level Styling
+================================ */
+.level-1 .official-card {
+  background: #e3f2fd; /* Light blue - Captain */
+  border-top: 4px solid #2196f3;
+}
+
+.level-2 .official-card {
+  background: #e8f5e9; /* Light green - Secretary & Treasurer */
+  border-top: 4px solid #4caf50;
+}
+
+.level-3 .official-card {
+  background: #fff8e1; /* Light yellow - Kagawads */
+  border-top: 4px solid #ffb300;
+}
+
+.level-4 .official-card {
+  background: #f3e5f5; /* Light purple - Others */
+  border-top: 4px solid #9c27b0;
+}
+
+/* ================================
+   Connector lines between cards
+================================ */
+.tree-level .official-card::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  width: 2px;
+  height: 20px;
+  background: #333;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+
+/* Hide line for the first level (Barangay Captain) */
+.level-1 .official-card::before {
+  display: none;
+}
+
+/* ================================
+   Responsive Adjustments
+================================ */
+@media (max-width: 768px) {
+  .official-card {
+    width: 130px;
+  }
+
+  .official-card img {
+    height: 130px;
+  }
+
+  .tree-level {
+    gap: 25px;
+  }
+
+  .tree-level::before {
+    left: 15%;
+    right: 15%;
+  }
+}
+
     /* About Section */
     .about { background: #343A40; color: #fff; text-align: center; padding: 60px 20px; }
     .about h2 { color: #ffecb3; margin-bottom: 20px; }
@@ -337,6 +504,98 @@ if (file_exists($hotlines_file)) {
   </div>
 </section>
 
+<!-- Barangay Organizational Chart Section -->
+<section class="org-chart-section">
+  <h2>Barangay Organizational Chart</h2>
+
+  <div class="org-tree">
+    <?php
+    $org_members_file = 'data/org_members.json';
+    $org_dir = 'uploads/orgchart/';
+
+    if (file_exists($org_members_file)) {
+      $org_members = json_decode(file_get_contents($org_members_file), true);
+
+      if (!empty($org_members)) {
+        // Group by levels
+        $captain = array_filter($org_members, fn($m) => $m['position'] === 'Barangay Captain');
+        $secretaryTreasurer = array_filter($org_members, fn($m) =>
+          in_array($m['position'], ['Barangay Secretary', 'Barangay Treasurer'])
+        );
+        $kagawads = array_filter($org_members, fn($m) =>
+          str_contains($m['position'], 'Kagawad')
+        );
+        $skTanodHealth = array_filter($org_members, fn($m) =>
+          in_array($m['position'], ['SK Chairman', 'Barangay Tanod', 'Barangay Health Worker'])
+        );
+
+        // === LEVEL 1: Barangay Captain ===
+        echo '<div class="tree-level">';
+        foreach ($captain as $member) {
+          $photo = !empty($member['photo']) ? $org_dir . htmlspecialchars($member['photo']) : $org_dir . 'default.png';
+          echo '
+            <div class="official-card">
+              <img src="' . $photo . '" alt="' . htmlspecialchars($member['position']) . '">
+              <h3>' . htmlspecialchars($member['name']) . '</h3>
+              <p>' . htmlspecialchars($member['position']) . '</p>
+            </div>';
+        }
+        echo '</div>';
+
+        echo '<div class="tree-branch"></div>';
+
+        // === LEVEL 2: Secretary & Treasurer ===
+        echo '<div class="tree-level sub-level">';
+        foreach ($secretaryTreasurer as $member) {
+          $photo = !empty($member['photo']) ? $org_dir . htmlspecialchars($member['photo']) : $org_dir . 'default.png';
+          echo '
+            <div class="official-card">
+              <img src="' . $photo . '" alt="' . htmlspecialchars($member['position']) . '">
+              <h3>' . htmlspecialchars($member['name']) . '</h3>
+              <p>' . htmlspecialchars($member['position']) . '</p>
+            </div>';
+        }
+        echo '</div>';
+
+        echo '<div class="tree-branch"></div>';
+
+        // === LEVEL 3: Kagawads ===
+        echo '<div class="tree-level sub-level">';
+        foreach ($kagawads as $member) {
+          $photo = !empty($member['photo']) ? $org_dir . htmlspecialchars($member['photo']) : $org_dir . 'default.png';
+          echo '
+            <div class="official-card">
+              <img src="' . $photo . '" alt="' . htmlspecialchars($member['position']) . '">
+              <h3>' . htmlspecialchars($member['name']) . '</h3>
+              <p>' . htmlspecialchars($member['position']) . '</p>
+            </div>';
+        }
+        echo '</div>';
+
+        echo '<div class="tree-branch"></div>';
+
+        // === LEVEL 4: SK, Tanod, Health Worker ===
+        echo '<div class="tree-level sub-level">';
+        foreach ($skTanodHealth as $member) {
+          $photo = !empty($member['photo']) ? $org_dir . htmlspecialchars($member['photo']) : $org_dir . 'default.png';
+          echo '
+            <div class="official-card">
+              <img src="' . $photo . '" alt="' . htmlspecialchars($member['position']) . '">
+              <h3>' . htmlspecialchars($member['name']) . '</h3>
+              <p>' . htmlspecialchars($member['position']) . '</p>
+            </div>';
+        }
+        echo '</div>';
+      } else {
+        echo "<p>No members found.</p>";
+      }
+    } else {
+      echo "<p>No members data found.</p>";
+    }
+    ?>
+  </div>
+</section>
+
 
 <!-- About Section -->
 <section class="about" id="about">
@@ -351,11 +610,13 @@ if (file_exists($hotlines_file)) {
 <!-- Footer -->
 <footer>
   <div class="footer-logos">
+     
+  <div class="logo-item"><img src="assets/images/csab.png" alt="College Logo"><small>Colegio San Agustin - Bacolod</small></div>
     <div class="logo-item"><img src="assets/images/BG_logo.png" alt="Barangay Logo"><small>Barangay Connect</small></div>
-    <div class="logo-item"><img src="assets/images/csab.png" alt="College Logo"><small>Colegio San Agustin - Bacolod</small></div>
-    <div class="logo-item"><img src="assets/images/ghost_logo.png" alt="Designer Logo"><small>BSIT - Ghost Team</small></div>
+    <div class="logo-item"><img src="assets/images/ghost_logo.png" alt="Designer Logo"><small>Ghost Team</small></div>
+    <div class="logo-item"><img src="assets/images/CABECS.png" alt="College Logo"><small>CABECS</small></div>
   </div>
-  <div class="footer-year">&copy; <?php echo date('Y'); ?></div>
+  <div class="footer-year">&copy; <?php echo date('Y'); ?> | BSIT 4A </div>
 </footer>
 
 <script>

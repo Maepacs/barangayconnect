@@ -37,7 +37,7 @@ htmlspecialchars($position);
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Barangay Connect | Official Dashboard</title>
-  <link rel="icon" href="../assets/images/ghost.png">
+  <link rel="icon" href="../assets/images/BG_logo.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -111,8 +111,8 @@ htmlspecialchars($position);
     <h2>Barangay Connect</h2><br>
     <img src="../assets/images/bg_logo.png" alt="Barangay Logo">
     <ul>
-      <li><a href="official_dashboard.php" class="active"><i class="fa-solid fa-gauge"></i> Dashboard</a></li>
-      <li><a href="document_request.php"><i class="fa-solid fa-file-lines"></i> Document Requests</a></li>
+      <li><a href="officials_dashboard.php" class="active"><i class="fa-solid fa-gauge"></i> Dashboard</a></li>
+      <li><a href="docs_req.php"><i class="fa-solid fa-file-lines"></i> Document Requests</a></li>
       <li><a href="complaints.php"><i class="fa-solid fa-comments"></i> Complaints</a></li>
       <li><a href="residents.php"><i class="fa-solid fa-users"></i> Residents</a></li>
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
@@ -132,16 +132,22 @@ htmlspecialchars($position);
           <i class="fa-solid fa-bell"></i>
           <span class="badge">#</span>
         </div>
+     
         <div class="user">
-  <i class="fa-solid fa-user-circle"></i>
-  <span>
-    <?php 
-      echo isset($_SESSION["full_name"]) ? $_SESSION["full_name"] . " / " . $_SESSION["position"] : "Guest"; 
-    ?>
-  </span>
-</div>
-  </div>
-  </div>
+          <i class="fa-solid fa-user-circle"></i>
+          <!-- ✅ Use consistent session variable -->
+          <span>  <?php 
+             if(isset($_SESSION["fullname"], $_SESSION["role"])) {
+              echo htmlspecialchars($_SESSION["fullname"]) . " / " . htmlspecialchars($_SESSION["role"]);
+          } else {
+              echo "Guest";
+          }
+          
+            ?></span>
+        </div>
+      </div>
+    </div>
+
     <!-- Dashboard Cards -->
     <div class="cards">
       <div class="card">
