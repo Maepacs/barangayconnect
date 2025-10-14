@@ -81,23 +81,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $supporting_file = $file_name;
     }
 
-    // Generate request ID
-    $query = $conn->query("SELECT request_id FROM document_request ORDER BY CAST(SUBSTRING(request_id, 2) AS UNSIGNED) DESC LIMIT 1");
-    if ($query->num_rows > 0) {
-        $row = $query->fetch_assoc();
-        $num = (int)substr($row['request_id'], 1);
-        $newId = 'DOC' . str_pad($num + 1, 6, '0', STR_PAD_LEFT);
-    } else {
-        $newId = 'DOC000001';
-    }
+   // Generate new request ID
+$query = $conn->query("SELECT request_id FROM document_request ORDER BY CAST(SUBSTRING(request_id, 4) AS UNSIGNED) DESC LIMIT 1");
 
-    // ✅ Generate unique tracking number
-    $tracking_number = sprintf(
-      "DOC-%s-%04d-%s",
-      date("Ymd"),
-      rand(1000, 9999),
-      $user_id
-  );
+if ($query && $query->num_rows > 0) {
+    $row = $query->fetch_assoc();
+    $num = (int)substr($row['request_id'], 3); // extract numeric part after "DOC"
+    $newId = 'DOC' . str_pad($num + 1, 6, '0', STR_PAD_LEFT);
+} else {
+    $newId = 'DOC000001';
+}
+
+// ✅ Generate unique tracking number
+$tracking_number = sprintf(
+    "DOC-%s-%04d-%s",
+    date("Ymd"),
+    rand(1000, 9999),
+    $user_id
+);
+
 
   $date_filed = date("Y-m-d H:i:s");
   $handled_by = null;
