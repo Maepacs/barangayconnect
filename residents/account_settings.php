@@ -401,6 +401,7 @@ body{background:#FFF8E1;min-height:100vh;display:flex;}
               'High School Graduate',
               'Vocational Course',
               'College Level',
+              'College Undergraduate Level',
               'College Graduate',
               'Postgraduate / Master’s Degree',
               'Doctorate Degree'
