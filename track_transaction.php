@@ -48,10 +48,11 @@ if ($tracking_number) {
 
         // Timeline line color based on status
         if ($category === 'complaint') {
-            switch ($status) {
+            switch ($status) { 
                 case 'pending': $progress_color = "#ffc107"; break;      // yellow
                 case 'in progress': $progress_color = "#007bff"; break;  // blue
                 case 'resolved': $progress_color = "#28a745"; break;     // green
+                case 'rejected': $progress_color = "#dc3545"; break;     // 
                 default: $progress_color = "#6c757d";                     // gray
             }
         } else { // document request
@@ -66,6 +67,7 @@ if ($tracking_number) {
     }
 }
 ?>
+
 
 
   <!DOCTYPE html>
@@ -84,7 +86,7 @@ if ($tracking_number) {
   header nav a { color:#ddd; margin-left:20px; text-decoration:none; font-weight:500; transition:0.3s;}
   header nav a:hover { color:#4a90e2;}
   .track-container { flex:1; display:flex; justify-content:center; align-items:center; flex-direction:column; padding:80px 20px;}
-  .track-box { background:#E8E4C9; padding:40px 30px; border-radius:15px; box-shadow:0 3px 10px rgba(0,0,0,0.1); width:100%; max-width:650px; text-align:center;}
+  .track-box { background:rgba(237, 238, 217, 0.83); padding:40px 30px; border-radius:15px; box-shadow:0 3px 10px rgba(0,0,0,0.1); width:100%; max-width:650px; text-align:center;}
   input[type="text"] { width:80%; padding:10px; border-radius:6px; border:1px solid #ccc; margin-bottom:20px; font-size:16px;}
   button { background:#4a90e2; color:white; padding:10px 20px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; transition:0.3s;}
   button:hover { background:#357ab7;}

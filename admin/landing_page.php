@@ -1232,29 +1232,16 @@ session_start();
 
 
 
-
-
-
-  
-  <!-- Footer with Three Logos -->
-  <footer>
+<!-- Footer -->
+<footer>
   <div class="footer-logos">
-    <div class="logo-item">
-      <img src="../assets/images/BG_logo.png" alt="Barangay Logo">
-      <small>Barangay Connect</small>
-    </div>
-    <div class="logo-item">
-      <img src="../assets/images/csab.png" alt="College Logo">
-      <small>Colegio San Agustin - Bacolod </small>
-    </div>
-    <div class="logo-item">
-      <img src="../assets/images/ghost_logo.png" alt="Designer Logo">
-      <small>BSIT - Ghost Team </small>
-    </div>
+     
+  <div class="logo-item"><img src="../assets/images/csab.png" alt="College Logo"><small>Colegio San Agustin - Bacolod</small></div>
+    <div class="logo-item"><img src="../assets/images/BG_logo.png" alt="Barangay Logo"><small>Barangay Connect</small></div>
+    <div class="logo-item"><img src="../assets/images/ghost_logo.png" alt="Designer Logo"><small>Ghost Team</small></div>
+    <div class="logo-item"><img src="../assets/images/CABECS.png" alt="College Logo"><small>CABECS</small></div>
   </div>
-  <div class="footer-year">
-    &copy; <?php echo date('Y'); ?>
-  </div>
+  <div class="footer-year">&copy; <?php echo date('Y'); ?> | BSIT 4A </div>
 </footer>
 
 

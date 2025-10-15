@@ -174,7 +174,7 @@ $logStmt->close();
 }
 
 .container {
-  color: #000000; /* ensure text stays readable */
+  color:#000000; /* ensure text stays readable */
 }
 
 
