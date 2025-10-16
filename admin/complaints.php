@@ -46,19 +46,24 @@ if ($result && $result->num_rows > 0) {
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background:#FFF8E1; min-height: 100vh; display: flex; }
 
-    /* Sidebar */
-    .sidebar {
-      width: 250px;
-      background: #343A40;
-      color: #fff;
-      padding: 20px;
-      position: fixed;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      box-shadow: 2px 0 10px rgba(245, 245, 245, 0.94);
-    }
-
+  /* Sidebar */
+.sidebar {
+  width: 260px;
+  background: #343A40;
+  color: #fff;
+  padding: 20px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  box-shadow: 2px 0 10px rgba(245, 245, 245, 0.94);
+  
+  /* Added for scrolling */
+  overflow-y: auto;     /* Enable vertical scroll */
+  overflow-x: hidden;   /* Hide horizontal scroll */
+  scrollbar-width: thin; /* For Firefox */
+  scrollbar-color: #555 #343A40; /* Thumb and track color */
+}
     .sidebar h2 {
       text-align: center;
       font-size: 24px;
@@ -230,6 +235,7 @@ if ($result && $result->num_rows > 0) {
       <li><a href="document_request.php"><i class="fa-solid fa-file-lines"></i> Document Requests</a></li>
       <li><a href="complaints.php" class="active"> <i class="fa-solid fa-comments"></i> Complaints</a></li>
       <li><a href="residents.php"><i class="fa-solid fa-users"></i> Residents</a></li>
+      <li><a href="household.php"><i class="fa-solid fa-people-roof"></i> Household Records</a></li>
       <li><a href="officials.php"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
       <li><a href="activity_logs.php"><i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
