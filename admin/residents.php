@@ -324,6 +324,7 @@ $result = $conn->query($query);
       <li><a href="residents.php" class="active"> <i class="fa-solid fa-users"></i> Residents</a></li>
       <li><a href="household.php"><i class="fa-solid fa-people-roof"></i> Household Records</a></li>
       <li><a href="officials.php"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
+      <li><a href="compose_message.php"><i class="fa-solid fa-pen-to-square"></i> Compose Message</a></li>
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
       <li><a href="activity_logs.php"><i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
       <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>

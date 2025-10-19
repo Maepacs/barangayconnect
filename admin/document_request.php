@@ -1,5 +1,10 @@
 <?php
+require_once "../cons/config.php"; // ✅ Your DB connection file
+
+
 session_start();
+
+
 
 // Prevent caching
 header("Cache-Control: no-cache, no-store, must-revalidate");
@@ -203,6 +208,95 @@ body {
   cursor: pointer;
 }
 
+.documents-btn {
+  background-color: #1e88e5;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.documents-btn:hover {
+  background-color: #1565c0;
+}
+
+/* Modal Background */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.4);
+  justify-content: center;
+  align-items: center;
+}
+
+/* Modal Box */
+.modal-content {
+  background-color: #fff;
+  margin: auto;
+  padding: 30px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 450px;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  animation: fadeIn 0.3s ease;
+}
+
+/* Modal Header */
+.modal-content h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Close Button */
+.close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  color: #aaa;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.close:hover {
+  color: #000;
+}
+
+/* Document Buttons */
+.document-options button {
+  width: 100%;
+  background-color: #1976d2;
+  color: #fff;
+  border: none;
+  padding: 12px;
+  margin: 8px 0;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.3s;
+}
+.document-options button:hover {
+  background-color: #0d47a1;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* -------------------
    Table
 -------------------- */
@@ -305,7 +399,7 @@ tr:hover {
   </style>
 </head>
 <body>
-  <!-- Sidebar -->
+  <!-- Sidebar -->  
   <div class="sidebar">
     <h2>Barangay Connect</h2><br>
     <img src="../assets/images/bg_logo.png">
@@ -316,6 +410,7 @@ tr:hover {
       <li><a href="residents.php"><i class="fa-solid fa-users"></i> Residents</a></li>
       <li><a href="household.php"><i class="fa-solid fa-people-roof"></i> Household Records</a></li>
       <li><a href="officials.php"><i class="fa-solid fa-user-shield"></i> Officials</a></li>
+      <li><a href="compose_message.php"><i class="fa-solid fa-pen-to-square"></i> Compose Message</a></li>
       <li><a href="sms_history.php"><i class="fa-solid fa-message"></i> SMS History</a></li>
       <li><a href="activity_logs.php"><i class="fa-solid fa-list-check"></i> Activity Logs</a></li>
       <li><a href="settings.php"><i class="fa-solid fa-gear"></i> Settings</a></li>
@@ -356,13 +451,41 @@ tr:hover {
       <button><i class="fa fa-search"></i></button>
     </div>
 
+    <!-- DOCUMENTS BUTTON -->
+<div class="documents">
+  <button class="documents-btn" onclick="openDocumentChooser()">
+    <i class="fa-solid fa-folder-open"></i> Documents
+  </button>
+</div>
+
+<!-- MODAL -->
+<div id="documentModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeDocumentChooser()">&times;</span>
+    <h2><i class="fa-solid fa-file"></i> Choose a Document</h2>
+
+    <div class="document-options">
+      <button onclick="generateDocument('clearance')">
+        <i class="fa-solid fa-file-lines"></i> Barangay Clearance
+      </button>
+      <button onclick="generateDocument('indigency')">
+        <i class="fa-solid fa-file-circle-exclamation"></i> Certificate of Indigency
+      </button>
+      <button onclick="generateDocument('residency')">
+        <i class="fa-solid fa-file-signature"></i> Certificate of Residency
+      </button>
+    </div>
+  </div>
+</div>
+
+
     <!-- Active Requests -->
     <h2 class="section-title">Active Requests</h2>
     <div class="table-container">
       <table id="requestsTable">
         <thead>
           <tr>
-            <th>#</th>
+            <th>Number</th>
             <th>Resident Name</th>
             <th>Document Type</th>
             <th>Date Filed</th>
@@ -371,33 +494,44 @@ tr:hover {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td></td>
-            <td>Pedro Reyes</td>
-            <td>Barangay Clearance</td>
-            <td>2025-09-25</td>
-            <td><span class="status pending">Pending</span></td>
-            <td>
-              <button class="action-btn approve">Approve</button>
-              <button class="action-btn decline">Decline</button>
-              <button class="action-btn edit">Edit</button>
-              <button class="action-btn view">View</button>
-            </td>
-          </tr>
-          <tr>
-            <td></td>
-            <td>Ana Lopez</td>
-            <td>Business Permit</td>
-            <td>2025-09-24</td>
-            <td><span class="status processing">Processing</span></td>
-            <td>
-              <button class="action-btn approve">Approve</button>
-              <button class="action-btn decline">Decline</button>
-              <button class="action-btn edit">Edit</button>
-              <button class="action-btn view">View</button>
-            </td>
-          </tr>
-        </tbody>
+<?php
+  // Fetch active (pending or processing) requests
+  $query = "
+    SELECT dr.request_id, u.fullname, dr.document_type, dr.date_requested, dr.status 
+    FROM document_request dr
+    JOIN users u ON dr.user_id = u.user_id
+    WHERE dr.status IN ('Pending', 'Processing')
+    ORDER BY dr.date_requested DESC
+  ";
+  $result = $conn->query($query);
+  $count = 1;
+
+  if ($result && $result->num_rows > 0):
+      while ($row = $result->fetch_assoc()):
+?>
+  <tr>
+    <td><?php echo htmlspecialchars($count++); ?></td>
+    <td><?php echo htmlspecialchars($row['fullname']); ?></td>
+    <td><?php echo htmlspecialchars($row['document_type']); ?></td>
+    <td><?php echo htmlspecialchars($row['date_requested']); ?></td>
+    <td><span class="status <?php echo strtolower($row['status']); ?>">
+      <?php echo htmlspecialchars($row['status']); ?>
+    </span></td>
+    <td>
+      <button class="action-btn approve">Approve</button>
+      <button class="action-btn decline">Decline</button>
+      <button class="action-btn edit">Edit</button>
+      <button class="action-btn view">View</button>
+    </td>
+  </tr>
+<?php 
+      endwhile;
+  else:
+?>
+  <tr><td colspan="6">No active requests found.</td></tr>
+<?php endif; ?>
+</tbody>
+
       </table>
     </div>
 
@@ -415,26 +549,65 @@ tr:hover {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td></td>
-            <td>Juan Dela Cruz</td>
-            <td>Barangay ID</td>
-            <td>2025-09-20</td>
-            <td><span class="status approved">Approved</span></td>
-          </tr>
-          <tr>
-            <td></td>
-            <td>Maria Santos</td>
-            <td>Residency Certificate</td>
-            <td>2025-09-18</td>
-            <td><span class="status declined">Declined</span></td>
-          </tr>
-        </tbody>
+<?php
+  // Fetch archived (approved or declined) requests
+  $archived = "
+    SELECT dr.request_id, u.fullname, dr.document_type, dr.date_requested, dr.status 
+    FROM document_request dr
+    JOIN users u ON dr.user_id = u.user_id
+    WHERE dr.status IN ('Approved', 'Declined')
+    ORDER BY dr.date_requested DESC
+  ";
+  $result_archived = $conn->query($archived);
+  $count = 1;
+
+  if ($result_archived && $result_archived->num_rows > 0):
+      while ($row = $result_archived->fetch_assoc()):
+?>
+  <tr>
+    <td><?php echo htmlspecialchars($count++); ?></td>
+    <td><?php echo htmlspecialchars($row['fullname']); ?></td>
+    <td><?php echo htmlspecialchars($row['document_type']); ?></td>
+    <td><?php echo htmlspecialchars($row['date_requested']); ?></td>
+    <td><span class="status <?php echo strtolower($row['status']); ?>">
+      <?php echo htmlspecialchars($row['status']); ?>
+    </span></td>
+  </tr>
+<?php 
+      endwhile;
+  else:
+?>
+  <tr><td colspan="5">No archived requests found.</td></tr>
+<?php endif; ?>
+</tbody>
+
       </table>
     </div>
   </div>
 
   <script>
+
+function openDocumentChooser() {
+  document.getElementById("documentModal").style.display = "flex";
+}
+
+function closeDocumentChooser() {
+  document.getElementById("documentModal").style.display = "none";
+}
+
+function generateDocument(type) {
+  window.open('generate_form.php?type=' + type, '_blank');
+  closeDocumentChooser();
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  const modal = document.getElementById("documentModal");
+  if (event.target === modal) {
+    modal.style.display = "none";
+  }
+}
+
     const notifBadge = document.getElementById("notifCount");
 
     function updateNotifCount() {
