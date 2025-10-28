@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 07, 2025 at 10:46 AM
+-- Generation Time: Oct 14, 2025 at 09:29 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -39,7 +39,13 @@ CREATE TABLE `activity_logs` (
 --
 
 INSERT INTO `activity_logs` (`log_id`, `user_id`, `action`, `created_at`) VALUES
-('LOG000001', 'UM000001', 'Created account for Mae Pacquiao (Admin)', '2025-10-02 04:25:47');
+('LOG000001', 'UM000001', 'Created account for Mae Pacquiao (Admin)', '2025-10-02 04:25:47'),
+('LOG000002', 'UI000002', 'Resident Ismael Saripada registered an account', '2025-10-08 04:01:13'),
+('LOG000003', 'UI000002', 'Resident profile created for Ismael Saripada (ID: R000001)', '2025-10-08 04:24:07'),
+('LOG000004', 'UI000002', 'Resident Ismael Saripada updated personal information (Changed: Address)', '2025-10-13 08:49:18'),
+('LOG000005', 'UA000003', 'Created account for Armando Vito (Official)', '2025-10-13 11:34:03'),
+('LOG000006', 'UI000002', 'Resident Ismael Saripada requested a document (ID: DOC000001)', '2025-10-13 12:38:20'),
+('LOG000007', 'UI000002', 'Resident Ismael Saripada filed a complaint (ID: CMP000001, Tracking No: CMP-20251014-92F58A04)', '2025-10-13 23:16:42');
 
 -- --------------------------------------------------------
 
@@ -74,6 +80,13 @@ CREATE TABLE `complaints` (
   `handled_by` varchar(20) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `complaints`
+--
+
+INSERT INTO `complaints` (`complaint_id`, `user_id`, `complaint_title`, `complaint_type`, `description`, `image_file`, `date_filed`, `status`, `tracking_number`, `handled_by`) VALUES
+('CMP000001', 'UI000002', 'Noise', 'Noise', 'sndsnhhnsuhc', '1760419002_13.jpg', '2025-10-14 05:16:42', 'pending', 'CMP-20251014-92F58A04', NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -91,6 +104,13 @@ CREATE TABLE `document_request` (
   `date_requested` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `tracking_number` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `document_request`
+--
+
+INSERT INTO `document_request` (`request_id`, `user_id`, `document_type`, `purpose`, `supporting_file`, `status`, `processed_by`, `date_requested`, `tracking_number`) VALUES
+('DOC000001', 'UI000002', 'Barangay Clearance', 'For Educational Purposes Only', '1760380700_14.jpg', 'Pending', NULL, '2025-10-13 18:38:20', 'DOC-20251013-9283-UI000002');
 
 -- --------------------------------------------------------
 
@@ -158,6 +178,13 @@ CREATE TABLE `residents_profile` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `residents_profile`
+--
+
+INSERT INTO `residents_profile` (`resident_id`, `user_id`, `first_name`, `middle_name`, `last_name`, `suffix`, `sex`, `birthdate`, `civil_status`, `nationality`, `religion`, `address`, `livelihood_status`, `occupation`, `educational_attainment`, `blood_type`, `medical_conditions`, `allergies`, `contact_number`, `email_address`, `voter_status`, `pwd_status`, `senior_citizen_status`, `solo_parent_status`, `created_at`, `updated_at`) VALUES
+('R000001', 'UI000002', 'Ismael', 'Saludes', 'Saripada', '', 'Male', '2003-06-06', 'Single', 'Filipino', 'Roman Catholic', 'Barangay Eroreco, Bacolod City', 'Employed', 'Full-Stack Developer', 'College Graduate', 'O-', '', '', '', '', 'Not Registered', 0, 0, 0, '2025-10-08 10:24:07', '2025-10-13 14:49:18');
+
 -- --------------------------------------------------------
 
 --
@@ -198,6 +225,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `fullname`, `username`, `password_hash`, `role`, `status`, `date_registered`) VALUES
+('UA000003', 'Armando Vito', 'Cap_armando', '$2y$10$6JUBUOH5vrf0RYc/Ghc5jeiF4g9.wzHH.i59vKmS5rUI1kwYgpcqO', 'Official', 'active', '2025-10-13 11:34:03'),
+('UI000002', 'Ismael Saripada', 'Smile', '$2y$10$HKC3nNluTRz.W7iEWWrl9egkOlVnONau5/8NMtC1reMnPWO7aG7LK', 'Resident', 'active', '2025-10-08 04:01:13'),
 ('UM000001', 'Mae Pacquiao', 'meipacs', '$2y$10$VAhsxDQeRHjlluY2w9Uktu2BkOFEqPtt1FpSPahK5E8qUS61fsaSK', 'Admin', 'active', '2025-10-02 04:25:47');
 
 --

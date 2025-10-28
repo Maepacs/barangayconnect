@@ -99,6 +99,14 @@ do {
     $stmt->bind_param("sssssssss", $newId, $user_id, $complaint_title, $complaint_type, $description, $image_file, $date_filed, $handled_by, $tracking_number);
 
     if ($stmt->execute()) {
+        // Create resident notification
+        $nStmt = $conn->prepare("INSERT INTO notifications (user_id, type, ref_id, title, message) VALUES (?, 'complaint', ?, ?, ?)");
+        $notifTitle = 'Complaint Submitted';
+        $notifMsg = 'Your complaint "' . $complaint_title . '" was submitted. Tracking: ' . $tracking_number;
+        $nStmt->bind_param("ssss", $user_id, $newId, $notifTitle, $notifMsg);
+        $nStmt->execute();
+        $nStmt->close();
+
         // Log activity
         $logRes = $conn->query("SELECT log_id FROM activity_logs ORDER BY CAST(SUBSTRING(log_id, 4) AS UNSIGNED) DESC LIMIT 1");
         $newLogNum = ($logRes && $logRes->num_rows > 0)
@@ -451,9 +459,22 @@ body {
   <div class="header">
     <h1>File a Complaint</h1>
     <div class="right-section">
-      <div class="notification">
+      <div class="notification" id="notifBell">
         <i class="fa-solid fa-bell"></i>
-        <span class="badge">3</span>
+        <span class="badge" id="notifBadge"></span>
+        <div class="notif-dropdown" id="notifDropdown" style="display:none; position:absolute; right:0; top:28px; background:#1f242b; color:#e8edf3; width:320px; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.45); overflow:hidden; z-index:50;">
+          <div class="notif-header" style="padding:10px 12px; background:#e35d2d; color:#fff; font-weight:600;">Notifications
+            <button id="markAllReadBtn" style="float:right; background:rgba(0,0,0,0.2); color:#fff; border:1px solid rgba(255,255,255,0.35); padding:2px 8px; border-radius:6px; font-size:12px; cursor:pointer;">Mark all read</button>
+          </div>
+          <ul class="notif-list" id="notifList" style="list-style:none; max-height:350px; overflow-y:auto; margin:0; padding:0;">
+            <li style="padding:10px 12px; border-bottom:1px solid #eee;">Loading...</li>
+          </ul>
+          <div style="display:flex; justify-content:space-between; padding:8px 10px; background:#15191f; color:#a8b0b9;">
+            <button id="prevPage" style="background:#2a3038; color:#e8edf3; border:1px solid #3a424d; padding:4px 8px; border-radius:6px; font-size:12px; cursor:pointer;">Prev</button>
+            <span id="pageInfo" style="align-self:center; font-size:12px;">Page 1</span>
+            <button id="nextPage" style="background:#2a3038; color:#e8edf3; border:1px solid #3a424d; padding:4px 8px; border-radius:6px; font-size:12px; cursor:pointer;">Next</button>
+          </div>
+        </div>
       </div>
       <div class="user">
         <i class="fa-solid fa-user-circle"></i>
@@ -515,6 +536,67 @@ body {
 
 
 <script>
+// Notifications dropdown behavior
+const bell = document.getElementById('notifBell');
+const dropdown = document.getElementById('notifDropdown');
+if (bell) {
+  bell.addEventListener('click', function(e){
+    e.stopPropagation();
+    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+  });
+  document.addEventListener('click', function(){ dropdown.style.display = 'none'; });
+}
+
+let currentPage = 1;
+const PAGE_SIZE = 8;
+
+async function fetchNotifications(){
+  try {
+    const res = await fetch(`notifications_api.php?action=list&page=${currentPage}&page_size=${PAGE_SIZE}`);
+    const data = await res.json();
+    const badge = document.getElementById('notifBadge');
+    const list = document.getElementById('notifList');
+    if (!badge || !list) return;
+    if (!data.success) { badge.textContent = ''; list.innerHTML = '<li style="padding:10px 12px;">'+(data.error||'Failed to load')+'</li>'; return; }
+    badge.textContent = data.unread > 0 ? String(data.unread) : '';
+    let html = '';
+    const item = (icon, title, status, date) => `
+      <li style="padding:10px 12px; border-bottom:1px solid #eee;">
+        <span style="font-weight:600;"><i class="fa-solid ${icon}"></i> ${title}</span>
+        <span style="display:block; color:#666; font-size:12px; margin-top:4px;">Status: ${status} • ${date}</span>
+      </li>`;
+    (data.items||[]).forEach(n => {
+      const icon = n.type==='complaint' ? 'fa-comments' : (n.type==='document' ? 'fa-file-lines' : 'fa-bell');
+      html += item(icon, n.title, n.status, n.date);
+    });
+    list.innerHTML = html || '<li style="padding:10px 12px;">No notifications</li>';
+
+    // pagination state
+    const totalPages = Math.max(1, Math.ceil((data.total || 0) / (data.page_size || PAGE_SIZE)));
+    if (currentPage > totalPages) currentPage = totalPages;
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    document.getElementById('pageInfo').textContent = `Page ${currentPage}${totalPages ? ' of ' + totalPages : ''}`;
+    prevBtn.disabled = currentPage <= 1 || (data.total||0) === 0;
+    nextBtn.disabled = currentPage >= totalPages || (data.total||0) === 0;
+  } catch (e) { console.error(e); }
+}
+fetchNotifications();
+setInterval(fetchNotifications, 30000);
+
+// pagination controls
+document.getElementById('prevPage').addEventListener('click', (e)=>{ e.stopPropagation(); if (e.currentTarget.disabled) return; if (currentPage>1) { currentPage--; fetchNotifications(); }});
+document.getElementById('nextPage').addEventListener('click', (e)=>{ e.stopPropagation(); if (e.currentTarget.disabled) return; currentPage++; fetchNotifications(); });
+
+// mark all read
+document.getElementById('markAllReadBtn').addEventListener('click', async (e)=>{
+  e.stopPropagation();
+  const fd = new FormData(); fd.append('action','mark_all_read');
+  const res = await fetch('notifications_api.php', { method:'POST', body: fd });
+  const j = await res.json();
+  if (j.success) fetchNotifications();
+});
+
 function previewImage(event) {
     const input = event.target;
     const preview = document.getElementById('imagePreview');

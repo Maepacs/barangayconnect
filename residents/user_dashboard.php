@@ -207,6 +207,36 @@ function generateTrackingNumber($complaint_id) {
         border-radius: 50%;
     }
 
+    /* Notification dropdown */
+    .notif-dropdown {
+        position: absolute;
+        right: 0;
+        top: 28px;
+        background: #1f242b;
+        color: #e8edf3;
+        width: 320px;
+        border-radius: 8px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+        display: none;
+        overflow: hidden;
+        z-index: 50;
+    }
+    .notif-dropdown.active { display: block; }
+    .notif-header {
+        padding: 10px 12px;
+        background: #e35d2d;
+        color: #fff;
+        font-weight: 600;
+    }
+    .notif-list { list-style: none; max-height: 350px; overflow-y: auto; }
+    .notif-list li { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .notif-list li:last-child { border-bottom: none; }
+    .notif-item-title { font-weight: 600; }
+    .notif-item-meta { display:block; color:#a8b0b9; font-size:12px; margin-top:4px; }
+    .notif-actions { margin-top:6px; display:flex; gap:8px; }
+    .notif-btn { background:#2a3038; color:#e8edf3; border:1px solid #3a424d; padding:2px 8px; border-radius:6px; font-size:12px; cursor:pointer; }
+    .notif-btn:hover { background:#3a424d; }
+
     .header .user {
         display: flex;
         align-items: center;
@@ -343,9 +373,22 @@ function generateTrackingNumber($complaint_id) {
   <div class="header">
     <h1>Resident Dashboard</h1>
     <div class="right-section">
-      <div class="notification">
+      <div class="notification" id="notifBell">
         <i class="fa-solid fa-bell"></i>
-        <span class="badge">3</span>
+        <span class="badge" id="notifBadge"></span>
+        <div class="notif-dropdown" id="notifDropdown">
+          <div class="notif-header">Notifications
+            <button id="markAllReadBtn" style="float:right; background:rgba(0,0,0,0.2); color:#fff; border:1px solid rgba(255,255,255,0.35); padding:2px 8px; border-radius:6px; font-size:12px; cursor:pointer;">Mark all read</button>
+          </div>
+          <ul class="notif-list" id="notifList">
+            <li>Loading...</li>
+          </ul>
+          <div style="display:flex; justify-content:space-between; padding:8px 10px; background:#15191f; color:#a8b0b9;">
+            <button id="prevPage" style="background:#2a3038; color:#e8edf3; border:1px solid #3a424d; padding:4px 8px; border-radius:6px; font-size:12px; cursor:pointer;">Prev</button>
+            <span id="pageInfo" style="align-self:center; font-size:12px;">Page 1</span>
+            <button id="nextPage" style="background:#2a3038; color:#e8edf3; border:1px solid #3a424d; padding:4px 8px; border-radius:6px; font-size:12px; cursor:pointer;">Next</button>
+          </div>
+        </div>
       </div>
       <div class="user">
         <i class="fa-solid fa-user-circle"></i>
@@ -461,5 +504,93 @@ function generateTrackingNumber($complaint_id) {
 
   </div>
 </div>
+<script>
+// Toggle dropdown
+document.getElementById('notifBell').addEventListener('click', function(e){
+  e.stopPropagation();
+  const dd = document.getElementById('notifDropdown');
+  dd.classList.toggle('active');
+});
+document.addEventListener('click', function(){
+  document.getElementById('notifDropdown').classList.remove('active');
+});
+
+let currentPage = 1;
+const PAGE_SIZE = 8;
+
+async function fetchNotifications(){
+  try {
+    const res = await fetch(`notifications_api.php?action=list&page=${currentPage}&page_size=${PAGE_SIZE}`);
+    const data = await res.json();
+    const badge = document.getElementById('notifBadge');
+    const list = document.getElementById('notifList');
+    if (!data.success) { badge.textContent = ''; list.innerHTML = '<li>'+ (data.error||'Failed to load') +'</li>'; return; }
+    badge.textContent = data.unread > 0 ? String(data.unread) : '';
+    let html = '';
+    const actionBtns = (id, status) => `
+      <div class="notif-actions">
+        <button class="notif-btn" data-act="mark_read" data-id="${id}" ${status==='Read'?'disabled':''}>Mark read</button>
+        <button class="notif-btn" data-act="mark_unread" data-id="${id}" ${status==='Unread'?'disabled':''}>Mark unread</button>
+        <button class="notif-btn" data-act="dismiss" data-id="${id}">Dismiss</button>
+        <button class="notif-btn" data-act="delete" data-id="${id}">Delete</button>
+      </div>`;
+    const addItem = (icon, id, title, status, date) => {
+      html += `<li>
+        <span class="notif-item-title"><i class="fa-solid ${icon}"></i> ${title}</span>
+        <span class="notif-item-meta">Status: ${status} • ${date}</span>
+        ${actionBtns(id, status)}
+      </li>`;
+    };
+    (data.items || []).forEach(n => {
+      const icon = n.type==='complaint' ? 'fa-comments' : (n.type==='document' ? 'fa-file-lines' : 'fa-bell');
+      addItem(icon, n.id, n.title, n.status, n.date);
+    });
+    if (!html) html = '<li>No notifications</li>';
+    list.innerHTML = html;
+
+    // bind action buttons
+    list.querySelectorAll('.notif-btn').forEach(btn => btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-id');
+      const act = btn.getAttribute('data-act');
+      const fd = new FormData(); fd.append('action', act); fd.append('id', id);
+      const resp = await fetch('notifications_api.php', { method:'POST', body: fd });
+      const resj = await resp.json();
+      if (resj.success) { fetchNotifications(); }
+    }));
+    // pagination UI state
+    const totalPages = Math.max(1, Math.ceil((data.total || 0) / (data.page_size || PAGE_SIZE)));
+    if (currentPage > totalPages) currentPage = totalPages;
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    document.getElementById('pageInfo').textContent = `Page ${currentPage}${totalPages ? ' of ' + totalPages : ''}`;
+    prevBtn.disabled = currentPage <= 1 || (data.total||0) === 0;
+    nextBtn.disabled = currentPage >= totalPages || (data.total||0) === 0;
+  } catch(err){
+    console.error(err);
+  }
+}
+
+// initial fetch and periodic refresh
+fetchNotifications();
+setInterval(fetchNotifications, 30000);
+document.getElementById('prevPage').addEventListener('click', (e)=>{ 
+  e.stopPropagation(); 
+  if (e.currentTarget.disabled) return;
+  if (currentPage>1) { currentPage--; fetchNotifications(); }
+});
+document.getElementById('nextPage').addEventListener('click', (e)=>{ 
+  e.stopPropagation(); 
+  if (e.currentTarget.disabled) return;
+  currentPage++; fetchNotifications(); 
+});
+document.getElementById('markAllReadBtn').addEventListener('click', async (e)=>{
+  e.stopPropagation();
+  const fd = new FormData(); fd.append('action','mark_all_read');
+  const res = await fetch('notifications_api.php', { method:'POST', body: fd });
+  const j = await res.json();
+  if (j.success) fetchNotifications();
+});
+</script>
 </body>
 </html>
