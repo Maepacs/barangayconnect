@@ -220,70 +220,25 @@ $notifCount = count($notifications);
   position: absolute;
   top: 30px;
   right: 0;
-  background: #fff;
-  color: #333;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  background: #1f242b;
+  color: #e8edf3;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
   border-radius: 8px;
   width: 320px;
   z-index: 1000;
-  max-height: 400px;
-  overflow-y: auto;
-  animation: fadeIn 0.2s ease-in-out;
+  overflow: hidden;
 }
-
-.notif-dropdown h4 {
-  margin: 0;
-  padding: 12px;
-  font-size: 16px;
-  background: #f5f5f5;
-  border-bottom: 1px solid #ddd;
-}
-
-.notif-dropdown #markAllBtn {
-  display: block;
-  background: none;
-  border: none;
-  color: #007bff;
-  font-size: 14px;
-  text-align: right;
-  margin: 0 10px 5px 0;
-  cursor: pointer;
-}
-
-.notif-dropdown ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.notif-dropdown li {
-  padding: 12px;
-  border-bottom: 1px solid #eee;
-  transition: background 0.2s;
-}
-
-.notif-dropdown li:last-child {
-  border-bottom: none;
-}
-
-.notif-dropdown li a {
-  text-decoration: none;
-  color: inherit;
-  display: block;
-}
-
-.notif-dropdown li:hover {
-  background: #f9f9f9;
-}
+.notif-dropdown.active { display: block; }
+.notif-header { padding: 10px 12px; background:#e35d2d; color:#fff; font-weight:600; }
+.notif-list { list-style:none; margin:0; padding:0; max-height:350px; overflow-y:auto; }
+.notif-list li { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.notif-list li:last-child { border-bottom:none; }
+.notif-item-title { font-weight:600; }
+.notif-item-meta { display:block; color:#a8b0b9; font-size:12px; margin-top:4px; }
 
 /* Different background by type */
-.notif-dropdown li.complaint {
-  border-left: 4px solid #e74c3c; /* red for complaints */
-}
-
-.notif-dropdown li.document {
-  border-left: 4px solid #3498db; /* blue for documents */
-}
+.notif-list li.complaint { border-left: 4px solid #e74c3c; }
+.notif-list li.document { border-left: 4px solid #3498db; }
 
 /* Small text */
 .notif-dropdown small {
@@ -303,11 +258,11 @@ $notifCount = count($notifications);
 @media (max-width: 600px) {
   .notif-dropdown {
     position: fixed;
-    top: 60px;   /* below navbar */
+    top: 60px;
     right: 10px;
     left: 10px;
     width: auto;
-    max-height: 70vh; /* limit height to avoid full takeover */
+    max-height: 70vh;
     overflow-y: auto;
     border-radius: 12px;
   }
@@ -417,27 +372,17 @@ $notifCount = count($notifications);
 
   <!-- Dropdown -->
   <div id="notifDropdown" class="notif-dropdown">
-    <h4>Notifications</h4>
-    <button id="markAllBtn" onclick="markAllRead(event)">Mark all as read</button>
-    <ul id="notifList">
-      <?php if(!empty($notifications)): ?>
-        <?php foreach($notifications as $notif): ?>
-          <li class="<?php echo $notif['type']; ?>">
-            <a href="redirect_notification.php?id=<?php echo $notif['id']; ?>" class="notif-link">
-              <strong><?php echo ucfirst($notif['type']); ?>:</strong> <?php echo htmlspecialchars($notif['title']); ?>
-              <br>
-              <small>
-  From: <?php echo htmlspecialchars($notif['sender']); ?> | 
-  <?php echo htmlspecialchars($notif['date']); ?>
-</small>
-
-            </a>
-          </li>
-        <?php endforeach; ?>
-      <?php else: ?>
-        <li>No new notifications</li>
-      <?php endif; ?>
+    <div class="notif-header">Notifications
+      <button id="markAllBtn" style="float:right; background:rgba(0,0,0,0.2); color:#fff; border:1px solid rgba(255,255,255,0.35); padding:2px 8px; border-radius:6px; font-size:12px; cursor:pointer;">Mark all read</button>
+    </div>
+    <ul id="notifList" class="notif-list">
+      <li>Loading...</li>
     </ul>
+    <div style="display:flex; justify-content:space-between; padding:8px 10px; background:#15191f; color:#a8b0b9;">
+      <button id="prevPage" style="background:#2a3038; color:#e8edf3; border:1px solid #3a424d; padding:4px 8px; border-radius:6px; font-size:12px; cursor:pointer;">Prev</button>
+      <span id="pageInfo" style="align-self:center; font-size:12px;">Page 1</span>
+      <button id="nextPage" style="background:#2a3038; color:#e8edf3; border:1px solid #3a424d; padding:4px 8px; border-radius:6px; font-size:12px; cursor:pointer;">Next</button>
+    </div>
   </div>
 </div>
 
@@ -490,127 +435,122 @@ $notifCount = count($notifications);
     </div>
   </div>
 
-</body>
+<!-- Scripts -->
 <script>
-function markAllRead(e) {
-  e.stopPropagation(); // Prevent dropdown close
-  fetch("mark_all_read.php")
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        document.getElementById("notifBadge").textContent = "";
-        document.getElementById("notifList").innerHTML = "<li>No new notifications</li>";
-      }
-    })
-    .catch(err => console.error(err));
+// Dropdown toggle (resident-style)
+function toggleDropdown(){
+  const dd = document.getElementById('notifDropdown');
+  dd.classList.toggle('active');
+}
+window.addEventListener('click', (e)=>{
+  const isBell = e.target.closest && e.target.closest('.notification');
+  if (!isBell) document.getElementById('notifDropdown').classList.remove('active');
+});
+
+// Client-side pagination using admin fetch endpoint
+let currentPage = 1;
+const PAGE_SIZE = 8;
+let allItems = [];
+
+function buildItemHTML(item){
+  const icon = item.type === 'complaint' ? 'fa-comments' : 'fa-file-lines';
+  const read = item.status === 'Read';
+  return `<li class="${item.type}" data-id="${item.id}" data-type="${item.type}" data-status="${item.status}">
+    <span class="notif-item-title"><i class="fa-solid ${icon}"></i> ${item.type === 'complaint' ? 'Complaint' : 'Document'}: ${item.title}</span>
+    <span class="notif-item-meta">Status: ${item.status} • From: ${item.sender} • ${item.date}</span>
+    <div class="notif-actions">
+      <button class="notif-btn" data-act="mark_read" ${read ? 'disabled' : ''}>Mark read</button>
+      <button class="notif-btn" data-act="mark_unread" ${read ? '' : 'disabled'}>Mark unread</button>
+    </div>
+  </li>`;
 }
 
-// Handle single notification click (AJAX mark + redirect)
-async function handleNotifClick(e) {
-  e.preventDefault();
+function renderPage(){
+  const list = document.getElementById('notifList');
+  const badge = document.getElementById('notifBadge');
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = allItems.slice(start, start + PAGE_SIZE);
+  list.innerHTML = pageItems.length ? pageItems.map(buildItemHTML).join('') : '<li>No notifications</li>';
+  const unread = allItems.filter(i=>i.status==='Unread').length;
+  badge.textContent = unread ? String(unread) : '';
+  const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  document.getElementById('pageInfo').textContent = `Page ${currentPage}${totalPages ? ' of ' + totalPages : ''}`;
+  document.getElementById('prevPage').disabled = currentPage <= 1 || allItems.length === 0;
+  document.getElementById('nextPage').disabled = currentPage >= totalPages || allItems.length === 0;
+}
 
-  const link = e.currentTarget;
-  const id = link.dataset.id;
-  const type = link.dataset.type;
-
+async function loadNotifications(){
   try {
-    const response = await fetch("redirect_notification.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `id=${id}&type=${type}`
-    });
-    const data = await response.json();
-
-    if (data.success) {
-      // Remove this notification from list
-      link.closest("li").remove();
-
-      // Update badge
-      const badge = document.getElementById("notifBadge");
-      let currentCount = parseInt(badge.textContent) || 0;
-      if (currentCount > 1) {
-        badge.textContent = currentCount - 1;
-      } else {
-        badge.textContent = "";
-        document.getElementById("notifList").innerHTML = "<li>No new notifications</li>";
-      }
-
-      // Redirect to proper page
-      window.location.href = data.redirect;
-    }
-  } catch (err) {
-    console.error("Failed to update notification:", err);
+    const res = await fetch('fetch_notifications.php');
+    const data = await res.json();
+    const combined = [];
+    (data.complaints || []).forEach(x => combined.push(x));
+    (data.documents || []).forEach(x => combined.push(x));
+    combined.sort((a,b)=> Date.parse(b.date) - Date.parse(a.date));
+    allItems = combined;
+    renderPage();
+  } catch(err){
+    console.error(err);
+    document.getElementById('notifList').innerHTML = '<li>Failed to load</li>';
   }
 }
 
-async function fetchNotifications() {
-  try {
-    const response = await fetch("fetch_notifications.php");
-    const data = await response.json();
-
-    const badge = document.getElementById("notifBadge");
-    const list = document.getElementById("notifList");
-
-    badge.textContent = data.count > 0 ? data.count : "";
-
-    let html = "";
-
-    if (data.complaints.length > 0) {
-      data.complaints.forEach(c => {
-        html += `
-          <li class="complaint">
-            <a href="#" class="notif-link" data-id="${c.id}" data-type="complaint">
-              <strong>Complaint:</strong> ${c.title}<br>
-              <small>From: ${c.sender} | ${c.date}</small>
-            </a>
-          </li>`;
-      });
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('prevPage').addEventListener('click', (e)=>{ e.stopPropagation(); if (currentPage>1){ currentPage--; renderPage(); } });
+  document.getElementById('nextPage').addEventListener('click', (e)=>{ e.stopPropagation(); currentPage++; renderPage(); });
+  document.getElementById('markAllBtn').addEventListener('click', async (e)=>{
+    e.stopPropagation();
+    try {
+      const payload = new URLSearchParams();
+      payload.append('action','mark_all_read');
+      payload.append('items', JSON.stringify(allItems.filter(i=>i.status==='Unread').map(i=>({ id: i.id, type: i.type }))));
+      const res = await fetch('notifications_api.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: payload.toString() });
+      const j = await res.json();
+      if (j.success) { allItems = allItems.map(i=>({ ...i, status:'Read' })); renderPage(); }
+    } catch(err) { console.error(err); }
+  });
+  // item click: if not clicking a button, mark read and redirect
+  const listEl = document.getElementById('notifList');
+  listEl.addEventListener('click', async (e)=>{
+    const btn = e.target.closest('.notif-btn');
+    const li = e.target.closest('li[data-id]');
+    if (!li) return;
+    const id = li.getAttribute('data-id');
+    const type = li.getAttribute('data-type');
+    if (btn) {
+      e.stopPropagation();
+      const act = btn.getAttribute('data-act');
+      try {
+        const payload = new URLSearchParams();
+        payload.append('action', act);
+        payload.append('id', id);
+        payload.append('type', type);
+        const res = await fetch('notifications_api.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: payload.toString() });
+        const j = await res.json();
+        if (j.success) {
+          // flip status locally
+          allItems = allItems.map(i => (String(i.id)===String(id) && i.type===type) ? { ...i, status: act==='mark_unread' ? 'Unread' : 'Read' } : i);
+          renderPage();
+        }
+      } catch(err){ console.error(err); }
+      return;
     }
-
-    if (data.documents.length > 0) {
-      data.documents.forEach(d => {
-        html += `
-          <li class="document">
-            <a href="#" class="notif-link" data-id="${d.id}" data-type="document">
-              <strong>Document:</strong> ${d.title}<br>
-              <small>From: ${d.sender} | ${d.date}</small>
-            </a>
-          </li>`;
-      });
-    }
-
-    if (html === "") {
-      html = "<li>No new notifications</li>";
-    }
-
-    list.innerHTML = html;
-
-    // Attach click handlers
-    document.querySelectorAll(".notif-link").forEach(link => {
-      link.addEventListener("click", handleNotifClick);
-    });
-
-  } catch (err) {
-    console.error("Fetch notifications failed:", err);
-  }
-}
-
-// 🔄 Refresh every 10 seconds only
-setInterval(fetchNotifications, 10000);
-fetchNotifications();
-
-// Toggle dropdown
-function toggleDropdown() {
-  const dropdown = document.getElementById("notifDropdown");
-  dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-}
-
-// Close dropdown if clicked outside
-window.onclick = function(e) {
-  if (!e.target.matches('.notification, .notification *')) {
-    document.getElementById("notifDropdown").style.display = "none";
-  }
-}
+    // normal item click -> mark read and redirect
+    try {
+      const payload = new URLSearchParams();
+      payload.append('action','mark_read');
+      payload.append('id', id);
+      payload.append('type', type);
+      await fetch('notifications_api.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: payload.toString() });
+    } catch(err) { /* ignore */ }
+    allItems = allItems.map(i => (String(i.id)===String(id) && i.type===type) ? { ...i, status:'Read' } : i);
+    renderPage();
+    window.location.href = type === 'complaint' ? 'complaints.php' : 'document_request.php';
+  });
+  loadNotifications();
+  setInterval(loadNotifications, 30000);
+});
 </script>
 
 

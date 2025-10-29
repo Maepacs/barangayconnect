@@ -9,12 +9,17 @@ if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "Admin") {
     exit;
 }
 
-// Complaints
+$adminId = $_SESSION["user_id"];
+
+// Complaints (with read/unread status)
 $complaints = [];
 $cQuery = $conn->query("
-    SELECT complaint_id, complaint_title, DATE_FORMAT(date_filed, '%b %d, %Y') AS date_created, u.username
+    SELECT c.complaint_id, c.complaint_title, DATE_FORMAT(c.date_filed, '%b %d, %Y') AS date_created, u.username,
+           CASE WHEN anr.ref_id IS NULL THEN 'Unread' ELSE 'Read' END AS status
     FROM complaints c
     JOIN users u ON c.user_id = u.user_id
+    LEFT JOIN admin_notification_reads anr
+      ON anr.user_id = '" . $conn->real_escape_string($adminId) . "' AND anr.type='complaint' AND anr.ref_id = c.complaint_id
     WHERE c.status = 'New'
     ORDER BY c.date_filed DESC
 ");
@@ -24,18 +29,22 @@ while ($row = $cQuery->fetch_assoc()) {
         "title" => $row["complaint_title"],
         "date" => $row["date_created"],
         "sender" => $row["username"],
-        "type" => "complaint"
+        "type" => "complaint",
+        "status" => $row["status"]
     ];
 }
 
-// Document Requests
+// Document Requests (with read/unread status)
 $documents = [];
 $dQuery = $conn->query("
-    SELECT request_id, document_type, DATE_FORMAT(date_request, '%b %d, %Y') AS date_created, u.username
+    SELECT d.request_id, d.document_type, DATE_FORMAT(d.date_requested, '%b %d, %Y') AS date_created, u.username,
+           CASE WHEN anr.ref_id IS NULL THEN 'Unread' ELSE 'Read' END AS status
     FROM document_request d
     JOIN users u ON d.user_id = u.user_id
+    LEFT JOIN admin_notification_reads anr
+      ON anr.user_id = '" . $conn->real_escape_string($adminId) . "' AND anr.type='document' AND anr.ref_id = d.request_id
     WHERE d.status = 'Pending'
-    ORDER BY d.date_request DESC
+    ORDER BY d.date_requested DESC
 ");
 while ($row = $dQuery->fetch_assoc()) {
     $documents[] = [
@@ -43,12 +52,18 @@ while ($row = $dQuery->fetch_assoc()) {
         "title" => $row["document_type"],
         "date" => $row["date_created"],
         "sender" => $row["username"],
-        "type" => "document"
+        "type" => "document",
+        "status" => $row["status"]
     ];  
 }
 
+// unread count only
+$unreadCount = 0;
+foreach ($complaints as $c) { if ($c['status'] === 'Unread') $unreadCount++; }
+foreach ($documents as $d) { if ($d['status'] === 'Unread') $unreadCount++; }
+
 echo json_encode([
-    "count" => count($complaints) + count($documents),
+    "count" => $unreadCount,
     "complaints" => $complaints,
     "documents" => $documents
 ]);
